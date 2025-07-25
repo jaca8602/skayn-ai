@@ -76,9 +76,22 @@ class MarketDataManager extends EventEmitter {
 
   async startLivePriceCollection() {
     try {
-      // TESTNET: Always use simulation to ensure we have data
-      logger.info('🧪 TESTNET: Starting with simulation for reliable data');
-      this.simulatePriceData();
+      // Start with Coinbase API, fallback to simulation if needed
+      logger.info('🚀 Starting with Coinbase API for real Bitcoin prices');
+      
+      // First get some real price data to seed the history
+      try {
+        await this.fetchLivePrice();
+        logger.info('✅ Coinbase API working - using real prices');
+      } catch (error) {
+        logger.error('🚨 CRITICAL: All price APIs failed on startup', { 
+          error: error.message,
+          recommendation: 'Cannot start trading without real price data'
+        });
+        
+        // Don't start trading without real price data
+        throw new Error('Failed to initialize price data - all APIs unavailable. Trading cannot start safely.');
+      }
       
       // Clear any existing interval
       if (this.priceUpdateInterval) {
@@ -124,12 +137,14 @@ class MarketDataManager extends EventEmitter {
       this.lastLoggedPrice = priceData.price;
       
     } catch (error) {
-      logger.error('Failed to fetch price from service', error);
-      // Fallback to simulation if needed
-      if (!this.simulationStarted) {
-        this.simulationStarted = true;
-        this.simulatePriceData();
-      }
+      logger.error('🚨 Price fetch failed during trading', { 
+        error: error.message,
+        recommendation: 'Trading agent should stop or use cached price'
+      });
+      
+      // Don't continue trading without real prices
+      // The trading agent should handle this error and stop trading
+      throw error;
     }
   }
 

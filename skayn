@@ -38,18 +38,18 @@ const commandMap = {
   'stop': 'stop', 
   'status': 'status',
   'panic': 'panic',
-  'confirm-panic': 'confirm-panic',
-  'balance': 'check-balance',
-  'deposit': 'deposit-status',
-  'invoice': 'create-invoice',
-  'qr': 'create-invoice',
+  'confirm-panic': 'confirmPanic',  // Fixed: backend expects confirmPanic
+  'balance': 'checkBalance',        // Fixed: backend expects checkBalance
+  'deposit': 'depositStatus',       // Fixed: backend expects depositStatus
+  'invoice': 'createInvoice',       // Fixed: backend expects createInvoice
+  'qr': 'createInvoice',
   'force': 'force-decision',
-  'close-all': 'close-all',
-  'strategy': 'switch-strategy',
-  'enhanced': 'enable-enhanced',
-  'compare': 'compare-strategies',
-  'limits': 'daily-limits',
-  'check': 'hypertrading-check'
+  'close-all': 'closeAll',          // Fixed: backend expects closeAll
+  'strategy': 'switchStrategy',     // Fixed: backend expects switchStrategy
+  'enhanced': 'enableEnhanced',     // Fixed: backend expects enableEnhanced
+  'compare': 'compareStrategies',   // Fixed: backend expects compareStrategies
+  'limits': 'dailyLimits',          // Fixed: backend expects dailyLimits
+  'check': 'hypertradingCheck'      // Fixed: backend expects camelCase
 };
 
 function showHelp() {
@@ -93,29 +93,22 @@ ${colors.blue}Built with Goose AI framework for grant application${colors.reset}
 }
 
 function runGooseCommand(gooseCommand, params = []) {
-  console.log(`${colors.yellow}🪿 Executing:${colors.reset} goose "${gooseCommand}${params.length ? ' ' + params.join(' ') : ''}"`);
+  console.log(`${colors.yellow}🪿 Executing:${colors.reset} node goose-entry.js ${gooseCommand}${params.length ? ' ' + params.join(' ') : ''}`);
   
-  // Build the full command for Goose
-  let fullCommand = `Run goose-trading-agent/goose-entry.js ${gooseCommand}`;
-  if (params.length > 0) {
-    fullCommand += ` ${params.join(' ')}`;
-  }
-  
-  // Execute the Goose command
-  const goose = spawn('goose', [fullCommand], {
+  // Execute the Node.js script directly
+  const nodeArgs = ['goose-entry.js', gooseCommand, ...params];
+  const node = spawn('node', nodeArgs, {
     stdio: 'inherit',
-    shell: true,
     cwd: process.cwd()
   });
 
-  goose.on('error', (error) => {
-    console.error(`${colors.red}Error executing Goose command:${colors.reset}`, error.message);
-    console.log(`${colors.yellow}Make sure Goose is installed and in your PATH${colors.reset}`);
-    console.log(`${colors.cyan}Install: npm install -g @anthropic-ai/goose${colors.reset}`);
+  node.on('error', (error) => {
+    console.error(`${colors.red}Error executing command:${colors.reset}`, error.message);
+    console.log(`${colors.yellow}Make sure Node.js is installed${colors.reset}`);
     process.exit(1);
   });
 
-  goose.on('close', (code) => {
+  node.on('close', (code) => {
     if (code !== 0) {
       console.log(`${colors.red}Command exited with code ${code}${colors.reset}`);
     }

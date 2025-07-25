@@ -92,7 +92,62 @@ class GooseTradingAgent extends EventEmitter {
     // Start module-specific intervals
     this.startModules();
 
+    // Start command listener for CLI commands while running
+    this.startCommandListener();
+
     this.emit('started');
+  }
+
+  startCommandListener() {
+    // Check for command files every 2 seconds
+    this.commandInterval = setInterval(() => {
+      this.checkForCommands();
+    }, 2000);
+  }
+
+  async checkForCommands() {
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    try {
+      const commandFile = path.join(process.cwd(), '.skayn-command');
+      const stats = await fs.stat(commandFile);
+      
+      if (stats.isFile()) {
+        const command = await fs.readFile(commandFile, 'utf8');
+        const trimmedCommand = command.trim();
+        
+        logger.info(`📨 Received command while running: ${trimmedCommand}`);
+        
+        // Execute the command
+        if (trimmedCommand === 'status') {
+          this.logCurrentStatus();
+        } else if (trimmedCommand === 'stop' || trimmedCommand === 'panic') {
+          logger.info('🛑 Stop command received - shutting down...');
+          await this.stop();
+          process.exit(0);
+        }
+        
+        // Delete the command file
+        await fs.unlink(commandFile);
+      }
+    } catch (error) {
+      // File doesn't exist or other error - ignore
+    }
+  }
+
+  logCurrentStatus() {
+    const status = this.getStatus();
+    const currentPrice = this.marketData.getLatestPrice();
+    
+    logger.info('📊 CURRENT STATUS WHILE RUNNING', {
+      running: status.running,
+      currentPrice: currentPrice ? `$${currentPrice.toFixed(2)}` : 'N/A',
+      activePositions: status.activePositions,
+      totalTrades: status.performance.totalTrades,
+      netPnL: status.pnl.netPnL ? `$${status.pnl.netPnL.toFixed(2)}` : '$0.00',
+      lastDecision: status.lastDecision?.action || 'None'
+    });
   }
 
   async stop() {
@@ -107,6 +162,12 @@ class GooseTradingAgent extends EventEmitter {
     if (this.decisionInterval) {
       clearInterval(this.decisionInterval);
       this.decisionInterval = null;
+    }
+
+    // Stop command listener
+    if (this.commandInterval) {
+      clearInterval(this.commandInterval);
+      this.commandInterval = null;
     }
 
     // Stop all modules
@@ -210,6 +271,32 @@ class GooseTradingAgent extends EventEmitter {
     // If risk check fails, hold
     if (!riskAssessment.canTrade) {
       decision.reasons.push('Risk limits exceeded');
+      return decision;
+    }
+
+    // HYPERTRADING MODE: Force aggressive trading for demo
+    const currentPrice = this.marketData.getLatestPrice();
+    
+    if (currentPrice && this.state.performance.totalTrades < 5) {
+      // Force trading for first 5 trades to demonstrate the system
+      const actions = ['BUY', 'SELL'];
+      const randomAction = actions[Math.floor(Math.random() * actions.length)];
+      
+      decision.action = randomAction;
+      decision.confidence = 0.8; // High confidence for demo
+      decision.reasons = [
+        `🚀 HYPERTRADING DEMO: Forced ${randomAction} at $${currentPrice.toFixed(2)}`,
+        `Market health: ${marketAnalysis.marketHealth || 'GOOD'}`,
+        'Demonstrating autonomous trading capabilities'
+      ];
+      
+      logger.info('🚀 HYPERTRADING: Forcing aggressive trade for demo', {
+        action: decision.action,
+        confidence: decision.confidence,
+        price: currentPrice,
+        tradeNumber: this.state.performance.totalTrades + 1
+      });
+      
       return decision;
     }
 
