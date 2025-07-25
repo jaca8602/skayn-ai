@@ -88,28 +88,6 @@ cp .env.example .env
 
 ---
 
-## 🧠 **What Makes This Revolutionary**
-
-### **For AI Framework Developers** 👨‍💻
-- **First Real Financial Agency**: AI agents that can earn, save, and spend real money
-- **Production-Ready**: Live Bitcoin trading with proven profitability
-- **Risk-Managed**: Enterprise-grade safety controls and position limits
-- **Extensible**: 8 MCP tools that can be expanded for any financial use case
-
-### **For Bitcoin Enthusiasts** ₿
-- **AI-Powered DCA**: Dollar-cost averaging with machine learning optimization
-- **24/7 Trading**: Never miss market opportunities with autonomous monitoring
-- **Lightning Native**: Built for Bitcoin's second layer from the ground up
-- **Self-Custody**: Your keys, your Bitcoin, your AI agent
-
-### **For Financial Innovation** 💡
-- **Programmable Finance**: APIs for AI-controlled financial decisions
-- **Micro-Payments**: Enable new business models with satoshi-level precision
-- **Global Access**: No geographic restrictions or traditional banking requirements
-- **Open Source**: Transparent, auditable, and community-driven
-
----
-
 ## 🛠️ **Available Commands**
 
 ### **Skayn CLI Commands** 💻
