@@ -1,4 +1,4 @@
-# 🦆 Skayn.ai
+# 🪿 Skayn.ai
 
 **Autonomous Bitcoin trading system inspired by the precision and coordination of geese flying in formation.**
 
