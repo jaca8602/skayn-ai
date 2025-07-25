@@ -17,7 +17,7 @@ Skayn.ai combines Lightning Network integration, advanced technical analysis, an
 ### ⚡ **Lightning Network Integration**
 - **Instant Deposits**: Lightning Network QR codes for seamless funding
 - **Testnet Ready**: Full LN Markets testnet integration
-- **Satoshi Native**: All balances in sats (proper Bitcoin behavior)
+- **Satoshi Native**: All balances in sats 
 
 ### 🎯 **Advanced Risk Management**
 - **Position Limits**: Max 3 concurrent positions, $100 each
@@ -169,9 +169,7 @@ cp .env.example .env
 
 ### **Phase 2: Multi-Source Intelligence**
 - [ ] CSV data ingestion for backtesting
-- [ ] Social sentiment integration
-- [ ] DeFiLlama protocol metrics
-- [ ] Alt-coin flow correlation
+- [ ] Social sentiment 
 
 ### **Phase 3: Advanced Fusion**
 - [ ] Multi-source signal fusion engine
