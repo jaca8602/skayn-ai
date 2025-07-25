@@ -12,13 +12,24 @@
     "goose:status": "node goose-entry.js status",
     "goose:analyze": "node goose-entry.js analyze"
   },
-  "keywords": ["skayn", "bitcoin", "lightning", "goose", "autonomous", "trading", "ai", "agent"],
+  "keywords": [
+    "skayn",
+    "bitcoin",
+    "lightning",
+    "goose",
+    "autonomous",
+    "trading",
+    "ai",
+    "agent"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@ln-markets/api": "^3.0.1",
     "axios": "^1.11.0",
     "dotenv": "^17.2.1",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
     "technicalindicators": "^3.1.0",
     "winston": "^3.17.0",
     "ws": "^8.18.3"

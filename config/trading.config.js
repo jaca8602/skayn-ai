@@ -37,23 +37,31 @@ module.exports = {
   // Goose Agent Configuration
   goose: {
     mode: process.env.GOOSE_MODE || 'autonomous',
-    decisionInterval: parseInt(process.env.GOOSE_DECISION_INTERVAL) || 60000,
+    decisionInterval: parseInt(process.env.GOOSE_DECISION_INTERVAL) || 30000, // 30 seconds for hypertrading
+    hypertrading: {
+      enabled: true,
+      quickDecisions: true,
+      dopamineNotifications: true,
+      microPositions: true
+    },
     modules: {
       marketAnalysis: {
         enabled: true,
-        interval: 30000
+        interval: 15000 // Faster market analysis for hypertrading
       },
       tradeExecution: {
         enabled: true,
-        confirmationRequired: false
+        confirmationRequired: false,
+        fastExecution: true
       },
       riskManagement: {
         enabled: true,
-        realtimeMonitoring: true
+        realtimeMonitoring: true,
+        microPositionOptimized: true
       },
       portfolioOptimization: {
         enabled: true,
-        rebalanceInterval: 3600000
+        rebalanceInterval: 1800000 // 30 minutes instead of 1 hour
       }
     }
   },

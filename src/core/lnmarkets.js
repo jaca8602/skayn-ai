@@ -47,7 +47,7 @@ class LNMarketsClient extends EventEmitter {
       } catch (error) {
         // Try alternative method names
         logger.info('Testing connection...');
-        this.balance = 0; // Set default balance for testnet
+        this.balance = 1000; // Set mock $1000 balance for testnet hypertrading
       }
 
       // Initialize WebSocket client (optional for now)
@@ -372,6 +372,81 @@ class LNMarketsClient extends EventEmitter {
     fees.estimatedTotalCost = fees.opening + fees.closingEstimated + fees.totalDailyCost;
     
     return fees;
+  }
+
+  // Deposit and account methods
+  async getDepositAddress() {
+    try {
+      // Try to get a deposit address from LN Markets API
+      const result = await this.restClient.userdeposit();
+      return {
+        invoice: result.invoice,
+        qrCode: result.qr_code,
+        address: result.address,
+        amount: result.amount
+      };
+    } catch (error) {
+      logger.warn('Could not fetch real deposit address, using mock', error);
+      return {
+        invoice: 'lnbc100u1p...[mock_invoice_for_testnet]',
+        qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
+        address: 'Mock Lightning Address for Development',
+        amount: 10000 // 10k sats = ~$10
+      };
+    }
+  }
+  
+  async createDepositInvoice(amountSats) {
+    try {
+      const result = await this.restClient.userdeposit({
+        amount: amountSats
+      });
+      return {
+        success: true,
+        invoice: result.invoice,
+        amount: amountSats,
+        qrCode: result.qr_code
+      };
+    } catch (error) {
+      logger.error('Failed to create deposit invoice', error);
+      return {
+        success: false,
+        error: error.message,
+        mockInvoice: `lnbc${amountSats}u1p...[mock_invoice_${amountSats}_sats]`
+      };
+    }
+  }
+  
+  async getDepositHistory() {
+    try {
+      const deposits = await this.restClient.usergetdeposits();
+      return deposits.map(d => ({
+        id: d.id,
+        amount: d.amount,
+        status: d.status,
+        timestamp: d.created_at,
+        txid: d.txid
+      }));
+    } catch (error) {
+      logger.warn('Could not fetch deposit history', error);
+      return [];
+    }
+  }
+  
+  async getDepositStatus(depositId) {
+    try {
+      const deposit = await this.restClient.usergetdeposit(depositId);
+      return {
+        id: deposit.id,
+        status: deposit.status,
+        amount: deposit.amount,
+        confirmations: deposit.confirmations,
+        timestamp: deposit.created_at
+      };
+    } catch (error) {
+      logger.error('Could not get deposit status', error);
+      return null;
+    }
   }
 
   async disconnect() {

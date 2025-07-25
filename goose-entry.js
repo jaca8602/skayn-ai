@@ -18,8 +18,17 @@ const commands = {
 
   stop: async () => {
     const agent = await initializeAgent();
-    await agent.stop();
-    return { status: 'stopped' };
+    // Check if they want to panic stop (close positions) or just stop the agent
+    const positions = await agent.lnMarketsClient.getPositions();
+    
+    if (positions.length > 0) {
+      // Positions open - trigger panic button
+      return await agent.handleCommand('panic');
+    } else {
+      // No positions - just stop the agent
+      await agent.stop();
+      return { status: 'stopped', message: 'Agent stopped. No positions to close.' };
+    }
   },
 
   status: async () => {
@@ -56,6 +65,227 @@ const commands = {
     const riskMetrics = agent.riskManager.getRiskMetrics();
     const performance = agent.state.performance;
     return { riskMetrics, performance };
+  },
+
+  enhancedStrategy: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('enable-enhanced');
+  },
+
+  switchStrategy: async (params) => {
+    const agent = await initializeAgent();
+    const strategyType = params && params[0] ? params[0] : 'enhanced';
+    return await agent.handleCommand('switch-strategy', { strategy: strategyType });
+  },
+
+  compareStrategies: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('compare-strategies');
+  },
+
+  analyzeEnhanced: async () => {
+    const agent = await initializeAgent();
+    // Force switch to enhanced strategy temporarily for analysis
+    const currentStrategy = agent.currentStrategyType;
+    agent.currentStrategyType = 'enhanced';
+    
+    const marketMetrics = agent.marketData.getMarketMetrics();
+    const enhancedSignal = agent.enhancedStrategy.analyze();
+    
+    // Switch back
+    agent.currentStrategyType = currentStrategy;
+    
+    return { 
+      marketMetrics, 
+      enhancedSignal,
+      strategyType: 'enhanced',
+      indicators: enhancedSignal.strategy === 'enhanced' ? 'MACD, RSI Divergence, StochRSI, EMA Crossover' : 'Standard'
+    };
+  },
+
+  // Deposit and Balance Commands
+  checkBalance: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('check-balance');
+  },
+
+  depositStatus: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('deposit-status');
+  },
+
+  depositInstructions: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('deposit-instructions');
+  },
+
+  createInvoice: async (params) => {
+    const agent = await initializeAgent();
+    const amountSats = params && params[0] ? parseInt(params[0]) : 50000; // Default 50k sats
+    return await agent.handleCommand('create-invoice', { amount: amountSats });
+  },
+
+  hypertradingCheck: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('hypertrading-check');
+  },
+
+  dailyLimits: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('daily-limits');
+  },
+
+  // Emergency Commands
+  panic: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('panic');
+  },
+
+  stop: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('panic');
+  },
+
+  emergency: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('panic');
+  },
+
+  confirmPanic: async () => {
+    const agent = await initializeAgent();
+    return await agent.handleCommand('confirm-panic');
+  },
+
+  // Help and Menu System
+  menu: async () => {
+    return {
+      success: true,
+      title: "🦆 Skayn.ai - Autonomous Bitcoin Trading Agent",
+      subtitle: "Lightning-powered hypertrading with Goose AI",
+      
+      sections: {
+        "🚀 Basic Trading": {
+          start: "Start autonomous trading (30-second intervals)",
+          stop: "Smart stop - panic if positions open, normal stop if not",
+          status: "Full agent status (balance, P&L, strategy, positions)",
+          positions: "View current open positions",
+          closeAll: "Close all positions immediately"
+        },
+        
+        "⚡ Hypertrading & Deposits": {
+          depositStatus: "Check balance and hypertrading eligibility (50k sats minimum)",
+          checkBalance: "View account balance in sats and USD",
+          depositInstructions: "Get Lightning Network deposit address and QR code",
+          createInvoice: "Create custom Lightning invoice (e.g., createInvoice 100000)",
+          hypertradingCheck: "Detailed eligibility check for hypertrading",
+          dailyLimits: "View remaining daily trading limits"
+        },
+        
+        "🧠 Trading Strategies": {
+          analyze: "Basic market analysis (moving averages, RSI)",
+          analyzeEnhanced: "Advanced analysis (MACD, RSI divergence, StochRSI)",
+          enhancedStrategy: "Switch to enhanced multi-indicator strategy",
+          switchStrategy: "Switch between basic/enhanced strategies",
+          compareStrategies: "Compare performance of both strategies"
+        },
+        
+        "🚨 Emergency Controls": {
+          panic: "Emergency stop - shows positions and asks for confirmation",
+          emergency: "Same as panic - emergency position closure",
+          confirmPanic: "Confirm emergency closure (after panic command)"
+        },
+        
+        "📊 Monitoring": {
+          metrics: "Risk metrics and performance stats",
+          trade: "Force a single trading decision",
+          menu: "Show this menu",
+          help: "Show help information"
+        }
+      },
+      
+      quickStart: [
+        "1. Check deposit status: goose 'Run goose-trading-agent/goose-entry.js depositStatus'",
+        "2. Get deposit address: goose 'Run goose-trading-agent/goose-entry.js depositInstructions'", 
+        "3. Deposit 50k+ sats via Lightning Network",
+        "4. Start trading: goose 'Run goose-trading-agent/goose-entry.js start'",
+        "5. Monitor: goose 'Run goose-trading-agent/goose-entry.js status'",
+        "6. Emergency stop: goose 'Run goose-trading-agent/goose-entry.js stop'"
+      ],
+      
+      safetyFeatures: [
+        "⚡ Minimum 50k sats (~$25-50) for hypertrading",
+        "🛑 Maximum 1M sats (~$500-1000) safety limit", 
+        "💰 $100 max position size with 2x leverage",
+        "🚨 Emergency panic button with confirmation",
+        "📉 2% stop losses on all positions",
+        "⏰ 30-second decision intervals for dopamine hits",
+        "🎯 Real-time trade execution notifications"
+      ],
+      
+      tips: [
+        "💡 Use 'enhancedStrategy' for better signal accuracy",
+        "💡 'depositStatus' shows exactly how many sats you need",
+        "💡 'stop' is smart - triggers panic if you have positions",
+        "💡 All balances shown in sats (proper Bitcoin behavior)",
+        "💡 Set phone down and let it trade autonomously",
+        "💡 Check 'status' anytime for dopamine hit updates"
+      ]
+    };
+  },
+
+  help: async () => {
+    return {
+      success: true,
+      title: "🦆 Skayn.ai Help",
+      description: "Autonomous Bitcoin trading system inspired by geese flying in formation",
+      
+      basicUsage: {
+        description: "All commands use this format:",
+        example: "goose \"Run goose-trading-agent/goose-entry.js <command>\"",
+        commands: [
+          "menu - Show full command menu",
+          "status - Check everything", 
+          "start - Begin trading",
+          "stop - Stop (smart panic if positions open)",
+          "depositStatus - Check balance requirements"
+        ]
+      },
+      
+      hypertrading: {
+        description: "Low-barrier Bitcoin trading with micro-positions",
+        minimum: "50,000 sats (~$25-50 depending on BTC price)",
+        maxPosition: "$100 per trade with 2x max leverage",
+        frequency: "Decisions every 30 seconds",
+        safetyLimits: "2% stop losses, daily loss limits, position limits"
+      },
+      
+      strategies: {
+        basic: "Moving averages + RSI + Bollinger Bands",
+        enhanced: "MACD + RSI divergence + StochRSI + EMA crossovers + confluence",
+        switching: "Performance-based auto-switching available"
+      },
+      
+      emergency: {
+        description: "Multiple ways to stop trading immediately",
+        commands: ["stop", "panic", "emergency"],
+        process: "Shows positions → asks confirmation → closes everything → stops trading",
+        timeout: "Confirmation expires after 5 minutes"
+      },
+      
+      deposits: {
+        method: "Lightning Network only (instant)",
+        address: "Use 'depositInstructions' to get QR code",
+        fees: "Free deposits, ~0.1% trading fees",
+        supported: "Any Lightning wallet (Phoenix, Breez, Wallet of Satoshi, etc.)"
+      },
+      
+      support: {
+        commands: "Use 'menu' to see all available commands",
+        status: "Use 'status' to check if everything is working",
+        github: "https://github.com/jaca8602/skayn-ai",
+        issues: "Report bugs on GitHub issues page"
+      }
+    };
   }
 };
 

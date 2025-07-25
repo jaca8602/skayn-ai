@@ -2,6 +2,8 @@ const EventEmitter = require('events');
 const logger = require('../utils/logger');
 const config = require('../../config/trading.config');
 const PnLTracker = require('../utils/pnl-tracker');
+const EnhancedTradingStrategy = require('../strategies/enhanced-strategy');
+const DepositManager = require('../core/deposit-manager');
 
 class GooseTradingAgent extends EventEmitter {
   constructor({
@@ -18,6 +20,11 @@ class GooseTradingAgent extends EventEmitter {
     this.config = config.goose;
     this.pnlTracker = new PnLTracker();
     
+    // Initialize enhanced strategy and deposit manager
+    this.enhancedStrategy = new EnhancedTradingStrategy(marketDataManager, riskManager);
+    this.depositManager = new DepositManager(lnMarketsClient);
+    this.currentStrategyType = 'basic'; // 'basic' or 'enhanced'
+    
     this.isRunning = false;
     this.decisionInterval = null;
     this.modules = {};
@@ -29,6 +36,10 @@ class GooseTradingAgent extends EventEmitter {
         totalTrades: 0,
         profitableTrades: 0,
         totalPL: 0
+      },
+      strategyMetrics: {
+        basic: { signals: 0, accuracy: 0 },
+        enhanced: { signals: 0, accuracy: 0 }
       }
     };
   }
@@ -129,11 +140,30 @@ class GooseTradingAgent extends EventEmitter {
     });
 
     try {
+      // Step 0: Check deposits and balance for hypertrading
+      const depositStatus = await this.depositManager.getDepositStatus();
+      if (!depositStatus.readyToTrade) {
+        logger.warn('💰 Trading halted - deposit/balance issue', depositStatus);
+        this.state.lastDecision = { action: 'HOLD', reason: depositStatus.nextAction };
+        return;
+      }
+
+      // Responsible gambling check
+      const safetyCheck = await this.depositManager.enforceResponsibleGambling();
+      if (safetyCheck.emergencyStop) {
+        logger.warn('🚨 Emergency stop triggered - responsible gambling limits', safetyCheck);
+        this.state.lastDecision = { action: 'HOLD', reason: 'Trading suspended for safety' };
+        return;
+      }
+
       // Step 1: Analyze market
       const marketAnalysis = await this.modules.marketAnalysis.analyze();
       
-      // Step 2: Generate trading signal
-      const signal = this.strategy.analyze();
+      // Step 2: Generate trading signal using current strategy
+      const signal = this.getCurrentStrategy().analyze();
+      
+      // Track strategy performance
+      this.updateStrategyMetrics(signal);
       
       // Step 3: Apply risk checks
       const riskAssessment = await this.assessRisk(signal);
@@ -141,9 +171,10 @@ class GooseTradingAgent extends EventEmitter {
       // Step 4: Make decision
       const decision = this.synthesizeDecision(marketAnalysis, signal, riskAssessment);
       
-      // Step 5: Execute decision
+      // Step 5: Execute decision (with dopamine notifications)
       if (decision.action !== 'HOLD') {
-        await this.executeDecision(decision);
+        const executionResult = await this.executeDecision(decision);
+        this.sendDopamineNotification(decision, executionResult);
       }
 
       this.state.lastDecision = decision;
@@ -185,14 +216,20 @@ class GooseTradingAgent extends EventEmitter {
     // For demo trades, always allow execution
     const isDemoTrade = signal.reason && signal.reason.includes('DEMO');
     
-    // Lower thresholds for demo or if signal is strong enough
-    if (isDemoTrade || (signal.confidence > 0.3 && marketAnalysis.marketHealth !== 'EXTREME')) {
-      decision.action = signal.action;
-      decision.confidence = signal.confidence * (marketAnalysis.confidence || 0.8);
+    // TESTNET: Ultra-low thresholds for demo trading (any signal will trigger)
+    if (isDemoTrade || (signal && signal.confidence > 0.01 && marketAnalysis.marketHealth !== 'EXTREME')) {
+      decision.action = signal.action || 'BUY'; // Default to BUY for demo
+      decision.confidence = Math.max(signal.confidence * (marketAnalysis.confidence || 0.8), 0.6); // Min 60% confidence for demo
       decision.reasons = [
-        ...signal.reason.split(', '),
+        signal.reason || 'Demo trade for testnet',
         `Market health: ${marketAnalysis.marketHealth}`
       ];
+      
+      logger.info('🎯 TESTNET: Lowered thresholds for demo trading', {
+        originalConfidence: signal.confidence,
+        finalConfidence: decision.confidence,
+        action: decision.action
+      });
     }
 
     return decision;
@@ -452,6 +489,284 @@ class GooseTradingAgent extends EventEmitter {
     return Math.max(0, score);
   }
 
+  // Strategy Management Methods
+  getCurrentStrategy() {
+    return this.currentStrategyType === 'enhanced' ? this.enhancedStrategy : this.strategy;
+  }
+
+  switchStrategy(strategyType) {
+    if (strategyType !== 'basic' && strategyType !== 'enhanced') {
+      throw new Error('Invalid strategy type. Use "basic" or "enhanced"');
+    }
+
+    const oldStrategy = this.currentStrategyType;
+    this.currentStrategyType = strategyType;
+
+    logger.gooseAction('STRATEGY_SWITCHED', {
+      from: oldStrategy,
+      to: strategyType,
+      reason: 'Manual switch'
+    });
+
+    return {
+      success: true,
+      previousStrategy: oldStrategy,
+      currentStrategy: strategyType
+    };
+  }
+
+  updateStrategyMetrics(signal) {
+    if (signal && signal.action !== 'HOLD') {
+      this.state.strategyMetrics[this.currentStrategyType].signals++;
+    }
+  }
+
+  compareStrategies() {
+    const basicMetrics = this.strategy.getSignalHistory ? this.strategy.getSignalHistory(20) : [];
+    const enhancedMetrics = this.enhancedStrategy.getSignalHistory(20);
+
+    return {
+      basic: {
+        recentSignals: basicMetrics.length,
+        lastSignal: basicMetrics[basicMetrics.length - 1] || null,
+        type: 'Moving Average Strategy'
+      },
+      enhanced: {
+        recentSignals: enhancedMetrics.length,
+        lastSignal: enhancedMetrics[enhancedMetrics.length - 1] || null,
+        type: 'Enhanced Multi-Indicator Strategy',
+        metrics: this.enhancedStrategy.getStrategyMetrics ? this.enhancedStrategy.getStrategyMetrics() : null
+      },
+      current: this.currentStrategyType
+    };
+  }
+
+  autoSwitchStrategy() {
+    const comparison = this.compareStrategies();
+    const enhancedPerf = this.state.strategyMetrics.enhanced;
+    const basicPerf = this.state.strategyMetrics.basic;
+
+    // Auto-switch to enhanced if it shows better performance
+    if (enhancedPerf.signals > 10 && enhancedPerf.accuracy > basicPerf.accuracy + 0.1) {
+      if (this.currentStrategyType === 'basic') {
+        this.switchStrategy('enhanced');
+        logger.gooseAction('AUTO_STRATEGY_SWITCH', {
+          reason: 'Enhanced strategy showing better performance',
+          enhancedAccuracy: enhancedPerf.accuracy,
+          basicAccuracy: basicPerf.accuracy
+        });
+      }
+    }
+  }
+
+  sendDopamineNotification(decision, executionResult) {
+    if (!this.config.hypertrading?.dopamineNotifications) return;
+
+    const notification = {
+      type: 'TRADE_EXECUTED',
+      action: decision.action,
+      timestamp: new Date().toISOString(),
+      result: executionResult?.success ? 'SUCCESS' : 'FAILED',
+      message: this.generateDopamineMessage(decision, executionResult)
+    };
+
+    // Log with special dopamine emoji for easy filtering
+    logger.info(`🎯 ${notification.message}`, notification);
+    
+    // Emit event for external notification systems
+    this.emit('dopamine-hit', notification);
+  }
+
+  generateDopamineMessage(decision, result) {
+    const action = decision.action === 'BUY' ? '📈 LONG' : '📉 SHORT';
+    const amount = `$${this.config.trading?.maxPositionSize || 100}`;
+    
+    if (result?.success) {
+      return `${action} position opened! ${amount} at risk. 🚀`;
+    } else {
+      return `${action} attempt failed. Waiting for next opportunity... ⏰`;
+    }
+  }
+
+  async handlePanicButton(params) {
+    try {
+      // Get current positions and P&L
+      const positions = await this.lnMarketsClient.getPositions();
+      const pnlStats = this.pnlTracker.getPnLSummary();
+      const balanceInfo = await this.depositManager.getAccountBalance();
+      
+      if (positions.length === 0) {
+        return {
+          success: true,
+          message: '✅ No open positions to close. You\'re already safe!',
+          positions: 0,
+          currentPnL: pnlStats.totalPnL || 0
+        };
+      }
+
+      // Calculate total exposure and unrealized P&L
+      let totalExposure = 0;
+      let unrealizedPnL = 0;
+      
+      positions.forEach(pos => {
+        totalExposure += pos.quantity || 0;
+        unrealizedPnL += pos.unrealizedPnL || 0;
+      });
+
+      const confirmation = {
+        action: 'PANIC_CLOSE_CONFIRMATION',
+        warning: '🚨 EMERGENCY STOP REQUESTED 🚨',
+        message: 'Are you sure you want to close ALL positions immediately?',
+        impact: {
+          positionsToClose: positions.length,
+          totalExposure: `$${totalExposure.toLocaleString()}`,
+          unrealizedPnL: unrealizedPnL >= 0 ? `+$${unrealizedPnL.toFixed(2)}` : `-$${Math.abs(unrealizedPnL).toFixed(2)}`,
+          currentBalance: `${balanceInfo.balanceSats?.toLocaleString() || 0} sats ($${balanceInfo.balanceUSD?.toFixed(2) || 0})`
+        },
+        positions: positions.map(pos => ({
+          id: pos.id,
+          side: pos.side?.toUpperCase(),
+          quantity: pos.quantity,
+          unrealizedPnL: pos.unrealizedPnL,
+          entryPrice: pos.price
+        })),
+        confirmationRequired: true,
+        confirmCommand: 'confirm-panic',
+        timeoutMinutes: 5,
+        alternatives: [
+          'Type "confirm-panic" to close all positions immediately',
+          'Type "status" to check current positions',
+          'Wait 5 minutes and this panic request will expire'
+        ]
+      };
+
+      // Store panic request with timestamp
+      this.state.panicRequest = {
+        timestamp: Date.now(),
+        positions: positions.length,
+        totalExposure,
+        unrealizedPnL
+      };
+
+      logger.warn('🚨 PANIC BUTTON PRESSED', confirmation);
+      
+      return {
+        success: true,
+        ...confirmation
+      };
+
+    } catch (error) {
+      logger.error('Panic button error', error);
+      return {
+        success: false,
+        error: 'Failed to process panic request',
+        message: 'Try "close-all" command or contact support'
+      };
+    }
+  }
+
+  async executePanicClose(params) {
+    try {
+      // Check if there's a valid panic request
+      if (!this.state.panicRequest) {
+        return {
+          success: false,
+          message: 'No panic request found. Use "panic" command first.'
+        };
+      }
+
+      // Check if panic request is still valid (5 minutes)
+      const requestAge = Date.now() - this.state.panicRequest.timestamp;
+      if (requestAge > 5 * 60 * 1000) {
+        this.state.panicRequest = null;
+        return {
+          success: false,
+          message: 'Panic request expired. Use "panic" command again if needed.'
+        };
+      }
+
+      // Execute emergency close
+      logger.warn('🚨 EXECUTING EMERGENCY CLOSE - ALL POSITIONS');
+      
+      const positions = await this.lnMarketsClient.getPositions();
+      const results = [];
+      let successCount = 0;
+      let totalPnL = 0;
+
+      // Stop autonomous trading during panic
+      const wasRunning = this.isRunning;
+      if (wasRunning) {
+        await this.stop();
+        logger.warn('🛑 Autonomous trading stopped during emergency close');
+      }
+
+      // Close all positions
+      for (const position of positions) {
+        try {
+          const closeResult = await this.modules.tradeExecution.closePosition(position.id);
+          if (closeResult) {
+            successCount++;
+            totalPnL += closeResult.realizedPnL || 0;
+            results.push({
+              positionId: position.id,
+              side: position.side,
+              status: 'CLOSED',
+              pnl: closeResult.realizedPnL || 0
+            });
+          }
+        } catch (error) {
+          logger.error(`Failed to close position ${position.id}`, error);
+          results.push({
+            positionId: position.id,
+            side: position.side,
+            status: 'FAILED',
+            error: error.message
+          });
+        }
+      }
+
+      // Clear panic request
+      this.state.panicRequest = null;
+
+      const summary = {
+        success: true,
+        action: 'EMERGENCY_CLOSE_EXECUTED',
+        message: `🚨 Emergency close completed! ${successCount}/${positions.length} positions closed.`,
+        summary: {
+          positionsAttempted: positions.length,
+          positionsClosed: successCount,
+          positionsFailed: positions.length - successCount,
+          totalRealizedPnL: totalPnL >= 0 ? `+$${totalPnL.toFixed(2)}` : `-$${Math.abs(totalPnL).toFixed(2)}`,
+          tradingStatus: 'STOPPED',
+          timestamp: new Date().toISOString()
+        },
+        results,
+        nextSteps: [
+          'Review your P&L and account balance',
+          'Consider taking a break from trading',
+          'Use "start" command to resume trading when ready',
+          'Use "status" to check final account state'
+        ]
+      };
+
+      // Log dramatic emergency close
+      logger.warn('🚨 EMERGENCY CLOSE COMPLETED', summary);
+      
+      // Send emergency notification
+      this.emit('emergency-close', summary);
+
+      return summary;
+
+    } catch (error) {
+      logger.error('Emergency close execution failed', error);
+      return {
+        success: false,
+        error: 'Emergency close failed',
+        message: 'Contact support immediately if positions are still open'
+      };
+    }
+  }
+
   getStatus() {
     return {
       running: this.isRunning,
@@ -460,7 +775,13 @@ class GooseTradingAgent extends EventEmitter {
       activePositions: this.state.activePositions.size,
       performance: this.state.performance,
       riskMetrics: this.riskManager.getRiskMetrics(),
-      marketMetrics: this.marketData.getMarketMetrics()
+      marketMetrics: this.marketData.getMarketMetrics(),
+      strategy: {
+        current: this.currentStrategyType,
+        comparison: this.compareStrategies(),
+        metrics: this.state.strategyMetrics
+      },
+      pnl: this.pnlTracker.getPnLSummary()
     };
   }
 
@@ -490,6 +811,77 @@ class GooseTradingAgent extends EventEmitter {
           await this.modules.tradeExecution.closePosition(pos.id);
         }
         return { success: true, message: `Closed ${positions.length} positions` };
+      
+      case 'switch-strategy':
+        if (!params || !params.strategy) {
+          return { success: false, message: 'Strategy parameter required (basic/enhanced)' };
+        }
+        try {
+          const result = this.switchStrategy(params.strategy);
+          return { success: true, ...result };
+        } catch (error) {
+          return { success: false, message: error.message };
+        }
+      
+      case 'compare-strategies':
+        return { success: true, comparison: this.compareStrategies() };
+      
+      case 'enable-enhanced':
+        const switchResult = this.switchStrategy('enhanced');
+        return { 
+          success: true, 
+          message: 'Enhanced strategy enabled with MACD, RSI divergence, and multi-indicator analysis',
+          ...switchResult 
+        };
+
+      case 'check-balance':
+        const balance = await this.depositManager.getAccountBalance();
+        return { success: true, balance };
+
+      case 'deposit-status':
+        const depositStatus = await this.depositManager.getDepositStatus();
+        return { success: true, ...depositStatus };
+
+      case 'deposit-instructions':
+        const instructions = await this.depositManager.generateDepositInstructions();
+        return { success: true, instructions };
+
+      case 'create-invoice':
+        const amountSats = params?.amount || 50000;
+        console.log(`\n💸 Creating Lightning invoice for ${amountSats.toLocaleString()} sats...\n`);
+        
+        const invoice = await this.lnMarketsClient.createDepositInvoice(amountSats);
+        
+        if (invoice.success && invoice.invoice) {
+          console.log('\n⚡ LIGHTNING INVOICE QR CODE ⚡\n');
+          const qrcode = require('qrcode-terminal');
+          qrcode.generate(invoice.invoice, { small: true });
+          
+          const btcPrice = await this.depositManager.getBitcoinPrice();
+          const amountUSD = (amountSats / 100000000) * btcPrice;
+          
+          console.log('\n📋 Invoice:', invoice.invoice.substring(0, 40) + '...');
+          console.log(`💰 Amount: ${amountSats.toLocaleString()} sats (~$${amountUSD.toFixed(2)})`);
+          console.log('⏰ Expires: ~10 minutes\n');
+        }
+        
+        return { success: invoice.success, ...invoice };
+
+      case 'hypertrading-check':
+        const eligibility = await this.depositManager.checkHypertradingEligibility();
+        return { success: true, eligibility };
+
+      case 'daily-limits':
+        const limits = await this.depositManager.checkDailyLimits();
+        return { success: true, limits };
+
+      case 'panic':
+      case 'stop':
+      case 'emergency':
+        return await this.handlePanicButton(params);
+
+      case 'confirm-panic':
+        return await this.executePanicClose(params);
       
       default:
         return { success: false, message: 'Unknown command' };

@@ -7,8 +7,17 @@ Skayn.ai leverages Lightning Network for instant settlements and Goose AI for in
 ## Features
 
 - **LN Markets Integration**: Full testnet API integration with real-time WebSocket data
-- **Autonomous Trading**: Moving average strategy with RSI and Bollinger Bands
+- **Hypertrading System**: Ultra-low barrier (50k sats / ~$25-50) with 30-second decision intervals for dopamine-driven trading
+- **Satoshi-Native**: All balances and positions denominated in satoshis (proper Bitcoin behavior)
+- **Lightning Network Deposits**: Instant Bitcoin deposits via Lightning Network for seamless funding
+- **Dual Trading Strategies**: 
+  - Basic: Moving average strategy with RSI and Bollinger Bands
+  - Enhanced: MACD, RSI divergence, StochRSI, EMA crossovers, multi-indicator confluence
+- **Advanced Signal Analysis**: Divergence detection, multi-timeframe analysis, confluence scoring
+- **Deposit Management**: Automatic balance checking, minimum deposit enforcement (50k sats), responsible gambling limits
 - **Risk Management**: Position limits, stop losses, daily loss limits, drawdown protection
+- **Strategy Auto-Switching**: Performance-based automatic strategy selection
+- **Dopamine Notifications**: Real-time trade execution alerts for engagement
 - **Goose Compatible**: Modular architecture designed for Goose agent orchestration
 - **Real-time Monitoring**: Comprehensive logging and performance tracking
 
@@ -51,11 +60,35 @@ node index.js close-all
 # Using Goose CLI
 goose "Execute the trading agent at goose-trading-agent/goose-entry.js start"
 
+# Show full menu of all commands
+goose "Run goose-trading-agent/goose-entry.js menu"
+
 # Check agent status
 goose "Run goose-trading-agent/goose-entry.js status and show me the results"
 
+# Get help
+goose "Run goose-trading-agent/goose-entry.js help"
+
 # Analyze market
 goose "Use goose-trading-agent/goose-entry.js analyze to check market conditions"
+
+# Enhanced Strategy Commands
+goose "Run goose-trading-agent/goose-entry.js enhancedStrategy"
+goose "Run goose-trading-agent/goose-entry.js analyzeEnhanced"
+goose "Run goose-trading-agent/goose-entry.js compareStrategies"
+goose "Run goose-trading-agent/goose-entry.js switchStrategy enhanced"
+
+# Hypertrading & Deposit Management
+goose "Run goose-trading-agent/goose-entry.js depositStatus"
+goose "Run goose-trading-agent/goose-entry.js checkBalance"
+goose "Run goose-trading-agent/goose-entry.js depositInstructions"
+goose "Run goose-trading-agent/goose-entry.js hypertradingCheck"
+goose "Run goose-trading-agent/goose-entry.js dailyLimits"
+
+# Emergency Panic Button
+goose "Run goose-trading-agent/goose-entry.js panic"
+goose "Run goose-trading-agent/goose-entry.js stop"
+goose "Run goose-trading-agent/goose-entry.js confirmPanic"
 ```
 
 ## Architecture
@@ -65,8 +98,10 @@ goose "Use goose-trading-agent/goose-entry.js analyze to check market conditions
 - **LN Markets Client** (`src/core/lnmarkets.js`): API integration and WebSocket management
 - **Market Data Manager** (`src/core/market-data.js`): Price data collection and technical indicators
 - **Risk Manager** (`src/risk/risk-manager.js`): Position sizing, stop losses, portfolio heat
-- **Trading Strategy** (`src/strategies/moving-average-strategy.js`): Signal generation
-- **Goose Agent** (`src/goose/trading-agent.js`): Autonomous decision-making engine
+- **Trading Strategies**: 
+  - Basic Strategy (`src/strategies/moving-average-strategy.js`): MA crossover with RSI
+  - Enhanced Strategy (`src/strategies/enhanced-strategy.js`): Multi-indicator analysis with MACD, RSI divergence, StochRSI, EMA crossovers
+- **Goose Agent** (`src/goose/trading-agent.js`): Autonomous decision-making engine with strategy switching
 
 ### Goose Integration Points
 

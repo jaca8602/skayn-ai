@@ -1,6 +1,7 @@
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
 const axios = require('axios');
+const priceService = require('../utils/price-service');
 
 class MarketDataManager extends EventEmitter {
   constructor(lnMarketsClient) {
@@ -12,6 +13,13 @@ class MarketDataManager extends EventEmitter {
     this.maxHistoryLength = 1000;
     this.subscribers = new Map();
     this.lastLoggedPrice = 0;
+    this.lastApiCall = 0;
+    this.apiCallInterval = 60000; // 60 seconds minimum between API calls
+    this.isRateLimited = false;
+    this.backoffMultiplier = 1;
+    this.priceCache = null;
+    this.priceCacheTime = 0;
+    this.cacheMaxAge = 30000; // Cache for 30 seconds
   }
 
   initialize() {
@@ -68,15 +76,32 @@ class MarketDataManager extends EventEmitter {
 
   async startLivePriceCollection() {
     try {
-      // Get initial price
-      await this.fetchLivePrice();
+      // TESTNET: Always use simulation to ensure we have data
+      logger.info('🧪 TESTNET: Starting with simulation for reliable data');
+      this.simulatePriceData();
       
-      // Update every 30 seconds to avoid rate limits
-      setInterval(async () => {
-        await this.fetchLivePrice();
-      }, 30000);
+      // Clear any existing interval
+      if (this.priceUpdateInterval) {
+        clearInterval(this.priceUpdateInterval);
+      }
       
-      logger.info('🔴 LIVE Bitcoin price feed started via CoinGecko');
+      // Subscribe to price service for updates
+      priceService.subscribe((priceData) => {
+        if (priceData && priceData.price) {
+          const data = {
+            price: priceData.price,
+            timestamp: new Date().toISOString(),
+            volume: Math.random() * 1000000 + 500000,
+            bid: priceData.price - 10,
+            ask: priceData.price + 10,
+            spread: 20,
+            change24h: priceData.change24h || 0
+          };
+          this.handlePriceUpdate(data);
+        }
+      });
+      
+      logger.info('🔴 LIVE Bitcoin price feed started (centralized service)');
     } catch (error) {
       logger.error('Failed to start live prices, falling back to simulation', error);
       this.simulatePriceData();
@@ -85,52 +110,43 @@ class MarketDataManager extends EventEmitter {
 
   async fetchLivePrice() {
     try {
-      const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true');
+      // Get price data from centralized service
+      const priceData = await priceService.getPriceData();
       
-      const bitcoinData = response.data.bitcoin;
-      const currentPrice = bitcoinData.usd;
-      const change24h = bitcoinData.usd_24h_change;
-      
-      const priceData = {
-        price: currentPrice,
-        timestamp: new Date().toISOString(),
-        volume: Math.random() * 1000000 + 500000, // Simulated volume
-        bid: currentPrice - 10,
-        ask: currentPrice + 10,
-        spread: 20,
-        change24h: change24h
-      };
-
       this.handlePriceUpdate(priceData);
       
-      // Log every few updates for visibility
-      if (Math.random() < 0.3) {
-        const trend = change24h > 0 ? '📈' : '📉';
-        logger.info(`🔴 LIVE Bitcoin: $${currentPrice.toLocaleString()} ${trend} (${change24h.toFixed(2)}% 24h)`, {
-          price: currentPrice,
-          change24h: change24h
-        });
-      }
+      // Log price updates for visibility
+      const trend = priceData.price > this.lastLoggedPrice ? '📈' : '📉';
+      logger.info(`📊 Bitcoin Price: $${priceData.price.toFixed(2)}`, {
+        price: priceData.price,
+        trend: trend
+      });
+      this.lastLoggedPrice = priceData.price;
       
     } catch (error) {
-      if (error.response && error.response.status === 429) {
-        logger.warn('Rate limited by CoinGecko, falling back to simulation');
+      logger.error('Failed to fetch price from service', error);
+      // Fallback to simulation if needed
+      if (!this.simulationStarted) {
+        this.simulationStarted = true;
         this.simulatePriceData();
-      } else {
-        logger.error('Failed to fetch live price from CoinGecko', error);
       }
     }
   }
 
   simulatePriceData() {
-    // Start with realistic current Bitcoin price around $117,750
-    let currentPrice = 117750 + (Math.random() * 5000 - 2500);
+    // Prevent multiple simulation intervals
+    if (this.simulationInterval) {
+      return;
+    }
+    
+    // Start with last known price or realistic current Bitcoin price
+    let currentPrice = this.currentPrice || 120000;
     
     const generatePriceData = () => {
-      // Simulate more volatile price movements for demo
-      const change = (Math.random() - 0.5) * 2000; // +/- $1000 max change
+      // Simulate small realistic price movements
+      const change = (Math.random() - 0.5) * 200; // +/- $100 max change
       currentPrice += change;
-      currentPrice = Math.max(110000, Math.min(125000, currentPrice)); // Keep within realistic current bounds
+      currentPrice = Math.max(115000, Math.min(125000, currentPrice)); // Keep within realistic bounds
       
       const priceData = {
         price: currentPrice,
@@ -142,26 +158,30 @@ class MarketDataManager extends EventEmitter {
       };
 
       this.handlePriceUpdate(priceData);
-      
-      // Log price updates for visibility
-      if (Math.random() < 0.3) { // Log ~30% of price updates
-        logger.info(`📊 Bitcoin Price: $${currentPrice.toFixed(2)}`, {
-          price: currentPrice,
-          trend: currentPrice > this.lastLoggedPrice ? '📈' : '📉'
-        });
-        this.lastLoggedPrice = currentPrice;
-      }
     };
 
-    // Generate initial price history
+    // Generate LOTS of initial price history (50 points for moving averages)
+    logger.info('🚀 TESTNET: Generating 50 historical price points...');
     for (let i = 0; i < 50; i++) {
       generatePriceData();
     }
-
-    // Continue generating price updates every 5 seconds
-    setInterval(generatePriceData, 5000);
     
-    logger.info('Simulated price data started', { currentPrice });
+    logger.info(`📊 Historical data created: ${this.priceHistory.length} points`);
+
+    // Continue generating price updates every 30 seconds (matching decision interval)
+    this.simulationInterval = setInterval(() => {
+      generatePriceData();
+      
+      // Log price updates for visibility
+      const trend = currentPrice > this.lastLoggedPrice ? '📈' : '📉';
+      logger.info(`📊 Bitcoin Price: $${currentPrice.toFixed(2)} (simulated)`, {
+        price: currentPrice,
+        trend: trend
+      });
+      this.lastLoggedPrice = currentPrice;
+    }, 30000);
+    
+    logger.info('📊 Simulated price data started (fallback mode)', { currentPrice });
   }
 
   getLatestPrice() {

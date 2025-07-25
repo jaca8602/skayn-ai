@@ -15,11 +15,10 @@ class MovingAverageStrategy {
     try {
       const metrics = this.marketData.getMarketMetrics();
       
-      // DEMO MODE: Force a SELL signal for testing trade execution immediately
+      // HYPERTRADING MODE: Quick responsive analysis for micro-positions
       const currentPrice = this.marketData.getLatestPrice();
-      if (currentPrice) {
-        logger.info('🚀 DEMO MODE: Forcing SELL signal to test trade execution');
-        return this.createSignal('SELL', 0.8, 'DEMO: Forced trade execution test');
+      if (!currentPrice) {
+        return this.createSignal('HOLD', 0, 'No price data available');
       }
       
       if (!this.hasEnoughData(metrics)) {

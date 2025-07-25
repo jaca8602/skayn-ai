@@ -21,9 +21,8 @@ class RiskManager {
 
   async canOpenPosition(side, quantity, leverage = 2) {
     try {
-      // DEMO MODE: Allow all trades for testing
-      logger.info('🚀 DEMO MODE: Risk checks bypassed for testing');
-      return { allowed: true, reason: 'Demo mode - all trades allowed' };
+      // HYPERTRADING MODE: Enable micro-position risk checks
+      logger.info('⚡ HYPERTRADING: Quick risk assessment for micro-positions');
       
       // Check 1: Position limit
       const currentPositions = await this.lnMarketsClient.getPositions();
@@ -126,6 +125,25 @@ class RiskManager {
   }
 
   calculatePositionSize(balance, riskPercentage = null) {
+    // TESTNET: Use fixed small position sizes for hypertrading
+    const isTestnet = process.env.LN_MARKETS_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+    
+    if (isTestnet) {
+      // Fixed $100 position for testnet hypertrading
+      const maxPositionUSD = 100;
+      const btcPrice = 120000; // Default BTC price for calculation
+      const positionSizeBTC = maxPositionUSD / btcPrice; // ~0.0008 BTC
+      
+      logger.info('🧪 TESTNET: Using fixed hypertrading position size', {
+        positionUSD: `$${maxPositionUSD}`,
+        positionBTC: positionSizeBTC.toFixed(8),
+        btcPrice: `$${btcPrice.toLocaleString()}`
+      });
+      
+      return positionSizeBTC;
+    }
+    
+    // Production logic
     const risk = riskPercentage || this.config.riskPerTrade;
     const riskAmount = (balance * risk) / 100;
     const positionSize = Math.min(

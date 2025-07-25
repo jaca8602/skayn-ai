@@ -6,7 +6,8 @@
       "Bash(npm install:*)",
       "Bash(node:*)",
       "Bash(ls:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "WebFetch(domain:docs.lnmarkets.com)"
     ],
     "deny": []
   }

@@ -67,24 +67,50 @@ async function initializeAgent() {
 }
 
 function setupGracefulShutdown() {
+  let shutdownInProgress = false;
+  
   const shutdown = async (signal) => {
-    logger.info(`${signal} received, shutting down gracefully...`);
+    if (shutdownInProgress) return;
+    shutdownInProgress = true;
+    
+    console.log('\n'); // New line for cleaner output
+    logger.info(`🛑 ${signal} received, shutting down gracefully...`);
     
     try {
-      if (agent) {
+      if (agent && agent.isRunning) {
+        logger.info('⏹️ Stopping trading agent...');
         await agent.stop();
       }
       
-      logger.info('Shutdown complete');
+      logger.info('✅ Shutdown complete');
       process.exit(0);
     } catch (error) {
       logger.error('Error during shutdown', error);
-      process.exit(1);
+      // Force exit after error
+      setTimeout(() => {
+        logger.warn('⚠️ Force exiting...');
+        process.exit(1);
+      }, 1000);
     }
   };
 
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  // Handle Ctrl+C
   process.on('SIGINT', () => shutdown('SIGINT'));
+  
+  // Handle termination signal
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (error) => {
+    logger.error('Uncaught exception:', error);
+    shutdown('UNCAUGHT_EXCEPTION');
+  });
+  
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled rejection at:', promise, 'reason:', reason);
+    // Don't exit on unhandled rejections, just log them
+  });
 }
 
 // Main entry point for Goose execution

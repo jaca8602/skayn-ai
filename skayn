@@ -1,0 +1,158 @@
+#!/usr/bin/env node
+
+/**
+ * Skayn.ai - Simple command wrapper for Goose Trading Agent
+ * Makes Goose commands shorter and more user-friendly
+ */
+
+const { spawn } = require('child_process');
+const path = require('path');
+
+// Color codes for terminal output
+const colors = {
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  cyan: '\x1b[36m',
+  white: '\x1b[37m',
+  reset: '\x1b[0m',
+  bold: '\x1b[1m'
+};
+
+// Get command line arguments
+const args = process.argv.slice(2);
+const command = args[0];
+const params = args.slice(1);
+
+// Show help if no command provided
+if (!command || command === 'help' || command === '--help' || command === '-h') {
+  showHelp();
+  process.exit(0);
+}
+
+// Map of simple commands to Goose commands
+const commandMap = {
+  'start': 'start',
+  'stop': 'stop', 
+  'status': 'status',
+  'panic': 'panic',
+  'confirm-panic': 'confirm-panic',
+  'balance': 'check-balance',
+  'deposit': 'deposit-status',
+  'invoice': 'create-invoice',
+  'qr': 'create-invoice',
+  'force': 'force-decision',
+  'close-all': 'close-all',
+  'strategy': 'switch-strategy',
+  'enhanced': 'enable-enhanced',
+  'compare': 'compare-strategies',
+  'limits': 'daily-limits',
+  'check': 'hypertrading-check'
+};
+
+function showHelp() {
+  console.log(`
+${colors.cyan}${colors.bold}🪿 Skayn.ai - Autonomous Bitcoin Trading Agent${colors.reset}
+
+${colors.yellow}${colors.bold}QUICK COMMANDS:${colors.reset}
+  ${colors.green}skayn start${colors.reset}          Start autonomous trading
+  ${colors.red}skayn stop${colors.reset}           Stop trading agent
+  ${colors.blue}skayn status${colors.reset}         Show current status
+  ${colors.magenta}skayn panic${colors.reset}          Emergency stop (close all positions)
+  
+${colors.yellow}${colors.bold}TRADING:${colors.reset}
+  ${colors.green}skayn force${colors.reset}          Force a trading decision
+  ${colors.red}skayn close-all${colors.reset}      Close all open positions
+  ${colors.blue}skayn enhanced${colors.reset}       Enable enhanced strategy (MACD + RSI)
+  ${colors.white}skayn strategy basic${colors.reset} Switch to basic strategy
+  ${colors.white}skayn compare${colors.reset}        Compare strategy performance
+
+${colors.yellow}${colors.bold}FUNDING:${colors.reset}
+  ${colors.green}skayn balance${colors.reset}        Check account balance
+  ${colors.cyan}skayn deposit${colors.reset}        Check deposit status
+  ${colors.magenta}skayn invoice [amount]${colors.reset} Create Lightning deposit invoice
+  ${colors.blue}skayn qr [amount]${colors.reset}     Create QR code for deposit
+  ${colors.white}skayn limits${colors.reset}         Check daily trading limits
+  ${colors.white}skayn check${colors.reset}          Check hypertrading eligibility
+
+${colors.yellow}${colors.bold}EXAMPLES:${colors.reset}
+  ${colors.cyan}skayn start${colors.reset}                    # Start trading
+  ${colors.cyan}skayn invoice 50000${colors.reset}            # Create 50k sat invoice
+  ${colors.cyan}skayn strategy enhanced${colors.reset}        # Switch to enhanced strategy
+  ${colors.cyan}skayn panic${colors.reset}                    # Emergency stop
+  ${colors.cyan}skayn confirm-panic${colors.reset}            # Confirm emergency close
+
+${colors.red}${colors.bold}EMERGENCY:${colors.reset}
+  ${colors.red}skayn panic${colors.reset}          Show panic confirmation
+  ${colors.red}skayn confirm-panic${colors.reset}   Actually close all positions
+
+${colors.blue}Built with Goose AI framework for grant application${colors.reset}
+`);
+}
+
+function runGooseCommand(gooseCommand, params = []) {
+  console.log(`${colors.yellow}🪿 Executing:${colors.reset} goose "${gooseCommand}${params.length ? ' ' + params.join(' ') : ''}"`);
+  
+  // Build the full command for Goose
+  let fullCommand = `Run goose-trading-agent/goose-entry.js ${gooseCommand}`;
+  if (params.length > 0) {
+    fullCommand += ` ${params.join(' ')}`;
+  }
+  
+  // Execute the Goose command
+  const goose = spawn('goose', [fullCommand], {
+    stdio: 'inherit',
+    shell: true,
+    cwd: process.cwd()
+  });
+
+  goose.on('error', (error) => {
+    console.error(`${colors.red}Error executing Goose command:${colors.reset}`, error.message);
+    console.log(`${colors.yellow}Make sure Goose is installed and in your PATH${colors.reset}`);
+    console.log(`${colors.cyan}Install: npm install -g @anthropic-ai/goose${colors.reset}`);
+    process.exit(1);
+  });
+
+  goose.on('close', (code) => {
+    if (code !== 0) {
+      console.log(`${colors.red}Command exited with code ${code}${colors.reset}`);
+    }
+    process.exit(code);
+  });
+}
+
+// Handle special cases
+if (command === 'version' || command === '--version' || command === '-v') {
+  console.log(`${colors.cyan}Skayn.ai v1.0.0${colors.reset} - Autonomous Bitcoin Trading Agent`);
+  console.log(`${colors.blue}Built with Goose AI framework${colors.reset}`);
+  process.exit(0);
+}
+
+// Map command to Goose command
+const gooseCommand = commandMap[command];
+
+if (!gooseCommand) {
+  console.error(`${colors.red}Unknown command:${colors.reset} ${command}`);
+  console.log(`${colors.yellow}Run${colors.reset} ${colors.cyan}skayn help${colors.reset} ${colors.yellow}to see available commands${colors.reset}`);
+  process.exit(1);
+}
+
+// Handle special parameter cases
+if (command === 'strategy' && params.length > 0) {
+  // Convert "skayn strategy enhanced" to Goose command with parameters
+  if (params[0] === 'enhanced') {
+    runGooseCommand('enable-enhanced');
+  } else if (params[0] === 'basic') {
+    runGooseCommand('switch-strategy', ['basic']);
+  } else {
+    runGooseCommand('switch-strategy', params);
+  }
+} else if (command === 'invoice' || command === 'qr') {
+  // Handle amount parameter for invoices
+  runGooseCommand(gooseCommand, params);
+} else {
+  // Standard command mapping
+  runGooseCommand(gooseCommand, params);
+}
