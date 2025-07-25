@@ -7,13 +7,99 @@
 
 const { initializeAgent } = require('./index');
 const logger = require('./src/utils/logger');
+const config = require('./config/trading.config');
 
 // Command handlers for the CLI
 const commands = {
-  start: async () => {
+  start: async (params) => {
+    // Check if strategy is specified via parameters
+    let strategy = params && params[0] ? params[0].toLowerCase() : null;
+    
+    if (!strategy) {
+      // Show strategy selection menu
+      return {
+        success: true,
+        message: "🚀 Choose Your Trading Strategy",
+        strategies: {
+          conservative: {
+            description: "Safe & Steady (Recommended for beginners)",
+            features: [
+              "📊 2% stop losses, 3% profit targets",
+              "💰 $8 position sizes, 1.5x max leverage", 
+              "📈 Basic indicators (SMA, RSI, Bollinger)",
+              "⏰ 60-second decision intervals",
+              "🛡️ Maximum safety, lower risk"
+            ],
+            command: "./skayn start conservative"
+          },
+          enhanced: {
+            description: "Advanced & Dynamic (More aggressive)",
+            features: [
+              "📊 Dynamic stop losses (1.5-3%), 4-6% profit targets",
+              "💰 Dynamic sizing ($5-$15), 2x max leverage",
+              "📈 Advanced indicators (MACD, RSI divergence, StochRSI)",
+              "⏰ 30-second decision intervals", 
+              "🎯 Multi-timeframe confluence analysis"
+            ],
+            command: "./skayn start enhanced"
+          },
+          adaptive: {
+            description: "AI-Optimized (Coming Soon)",
+            features: [
+              "🤖 Machine learning position sizing",
+              "📊 Adaptive risk management", 
+              "🧠 Pattern recognition algorithms",
+              "⚡ Real-time strategy optimization",
+              "🔮 Currently in development"
+            ],
+            command: "./skayn start adaptive (placeholder)"
+          }
+        },
+        note: "Choose a strategy by running one of the commands above",
+        default: "If unsure, start with: ./skayn start conservative"
+      };
+    }
+    
+    // Validate strategy choice
+    if (!['conservative', 'enhanced', 'adaptive'].includes(strategy)) {
+      return {
+        success: false,
+        error: `Invalid strategy: ${strategy}`,
+        available: ['conservative', 'enhanced', 'adaptive'],
+        message: "Use ./skayn start to see strategy options"
+      };
+    }
+    
+    // Handle adaptive strategy placeholder
+    if (strategy === 'adaptive') {
+      return {
+        success: false,
+        message: "🔮 Adaptive Strategy Coming Soon",
+        description: "AI-optimized machine learning strategy is currently in development",
+        alternatives: [
+          "Use 'conservative' for safe trading",
+          "Use 'enhanced' for advanced indicators"
+        ],
+        suggestion: "Try: ./skayn start enhanced"
+      };
+    }
+    
     const agent = await initializeAgent();
+    
+    // Set strategy in agent config
+    agent.config.strategy = strategy;
+    agent.currentStrategyType = strategy;
+    
     await agent.start();
-    return { status: 'started', mode: agent.config.mode };
+    return { 
+      status: 'started', 
+      mode: agent.config.mode,
+      strategy: strategy,
+      message: `🚀 Trading started with ${strategy} strategy`,
+      features: strategy === 'conservative' ? 
+        ['2% stop losses', '3% profit targets', '$8 positions', 'Basic indicators'] :
+        ['Dynamic stop losses', '4-6% profit targets', 'Dynamic sizing', 'Advanced indicators']
+    };
   },
 
   stop: async () => {
@@ -80,6 +166,28 @@ const commands = {
           (ourTrade.entry_price - currentPrice) * (ourTrade.quantity / 100000000) * 100000000;
         const pnlUSD = pnlSats / 100000000 * currentPrice;
         
+        // Get strategy configuration for targets
+        const strategy = agent.config.strategy || agent.currentStrategyType || 'conservative';
+        const strategyConfig = config.strategies?.[strategy];
+        
+        let stopLossPercent = 2;
+        let profitTargetPercent = 3;
+        
+        if (strategyConfig) {
+          stopLossPercent = typeof strategyConfig.stopLossPercentage === 'object' ? 
+            strategyConfig.stopLossPercentage.min : strategyConfig.stopLossPercentage;
+          profitTargetPercent = typeof strategyConfig.profitTargetPercentage === 'object' ? 
+            strategyConfig.profitTargetPercentage.min : strategyConfig.profitTargetPercentage;
+        }
+        
+        // Calculate stop loss and profit target prices
+        const stopLossPrice = isLong ? 
+          ourTrade.entry_price * (1 - stopLossPercent / 100) :
+          ourTrade.entry_price * (1 + stopLossPercent / 100);
+        const profitTargetPrice = isLong ? 
+          ourTrade.entry_price * (1 + profitTargetPercent / 100) :
+          ourTrade.entry_price * (1 - profitTargetPercent / 100);
+        
         return {
           success: true,
           message: `📊 POSITION STATUS`,
@@ -87,11 +195,15 @@ const commands = {
             id: ourTrade.id.slice(-8),
             side: isLong ? '🟢 LONG' : '🔴 SHORT',
             status: ourTrade.running ? '✅ OPEN' : '❌ CLOSED',
+            strategy: `🎯 ${strategy.toUpperCase()}`,
             margin: `${ourTrade.margin} sats`,
             entry: `$${ourTrade.entry_price.toLocaleString()}`,
             current: `$${currentPrice.toLocaleString()}`,
+            stopLoss: `🚨 $${stopLossPrice.toLocaleString()} (-${stopLossPercent}%)`,
+            profitTarget: `🎯 $${profitTargetPrice.toLocaleString()} (+${profitTargetPercent}%)`,
             pnl: `${pnlSats > 0 ? '+' : ''}${Math.round(pnlSats)} sats (${pnlUSD > 0 ? '+' : ''}$${pnlUSD.toFixed(2)})`,
-            age: `${Math.floor((Date.now() - ourTrade.creation_ts) / 60000)}min ago`
+            age: `${Math.floor((Date.now() - ourTrade.creation_ts) / 60000)}min ago`,
+            aiAutonomy: '🤖 AI will close at profit target automatically'
           },
           balance: `${agent.lnMarketsClient.balance} sats available`
         };
@@ -101,7 +213,8 @@ const commands = {
           message: "❌ Position c6368001... not found in API",
           balance: `${agent.lnMarketsClient.balance} sats available`,
           totalTrades: allTrades.length,
-          recentTrades: allTrades.slice(-3).map(t => `${t.id.slice(-8)}: ${t.running ? 'OPEN' : 'CLOSED'}`)
+          recentTrades: allTrades.slice(-3).map(t => `${t.id.slice(-8)}: ${t.running ? 'OPEN' : 'CLOSED'}`),
+          note: "🤖 AI autonomy active - positions close automatically at profit targets"
         };
       }
     } catch (error) {

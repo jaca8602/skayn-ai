@@ -58,9 +58,12 @@ function showHelp() {
 ${colors.cyan}${colors.bold}🪿 Skayn.ai - Autonomous Bitcoin Trading Agent${colors.reset}
 
 ${colors.yellow}${colors.bold}QUICK COMMANDS:${colors.reset}
-  ${colors.green}skayn start${colors.reset}          Start autonomous trading
-  ${colors.red}skayn stop${colors.reset}           Stop trading agent
+  ${colors.green}skayn start${colors.reset}          Show strategy selection menu
+  ${colors.green}skayn start conservative${colors.reset} Start safe trading (2% stop, 3% profit)
+  ${colors.green}skayn start enhanced${colors.reset}     Start advanced trading (dynamic targets)
+  ${colors.red}skayn stop${colors.reset}           Smart stop (panic if positions open)
   ${colors.blue}skayn status${colors.reset}         Show current status
+  ${colors.blue}skayn positions${colors.reset}      View positions with profit targets
   ${colors.magenta}skayn panic${colors.reset}          Emergency stop (close all positions)
   
 ${colors.yellow}${colors.bold}TRADING:${colors.reset}
@@ -79,9 +82,11 @@ ${colors.yellow}${colors.bold}FUNDING:${colors.reset}
   ${colors.white}skayn check${colors.reset}          Check hypertrading eligibility
 
 ${colors.yellow}${colors.bold}EXAMPLES:${colors.reset}
-  ${colors.cyan}skayn start${colors.reset}                    # Start trading
+  ${colors.cyan}skayn start${colors.reset}                    # Show strategy menu
+  ${colors.cyan}skayn start conservative${colors.reset}       # Start safe trading
+  ${colors.cyan}skayn start enhanced${colors.reset}           # Start advanced trading
+  ${colors.cyan}skayn positions${colors.reset}                # View positions with targets
   ${colors.cyan}skayn invoice 50000${colors.reset}            # Create 50k sat invoice
-  ${colors.cyan}skayn strategy enhanced${colors.reset}        # Switch to enhanced strategy
   ${colors.cyan}skayn panic${colors.reset}                    # Emergency stop
   ${colors.cyan}skayn confirm-panic${colors.reset}            # Confirm emergency close
 

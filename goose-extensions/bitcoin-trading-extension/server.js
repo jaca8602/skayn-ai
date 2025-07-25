@@ -44,10 +44,16 @@ class BitcoinTradingServer {
         tools: [
           {
             name: 'start_trading',
-            description: 'Start autonomous Bitcoin trading on LN Markets mainnet',
+            description: 'Start autonomous Bitcoin trading with strategy selection',
             inputSchema: {
               type: 'object',
               properties: {
+                strategy: {
+                  type: 'string',
+                  enum: ['conservative', 'enhanced', 'adaptive'],
+                  default: 'conservative',
+                  description: 'Trading strategy: conservative (safe), enhanced (advanced), adaptive (ML - coming soon)'
+                },
                 mode: {
                   type: 'string',
                   enum: ['autonomous', 'manual'],
@@ -142,7 +148,8 @@ class BitcoinTradingServer {
       try {
         switch (name) {
           case 'start_trading':
-            return await this.executeTradingCommand('start');
+            const startStrategy = args?.strategy || 'conservative';
+            return await this.executeTradingCommand('start', [startStrategy]);
           
           case 'stop_trading':
             return await this.executeTradingCommand(args?.emergency ? 'panic' : 'stop');
@@ -161,8 +168,8 @@ class BitcoinTradingServer {
             return await this.executeTradingCommand('invoice', [amount.toString()]);
           
           case 'switch_strategy':
-            const strategy = args?.strategy || 'enhanced';
-            return await this.executeTradingCommand('strategy', [strategy]);
+            const switchStrategy = args?.strategy || 'enhanced';
+            return await this.executeTradingCommand('strategy', [switchStrategy]);
           
           case 'force_trade_decision':
             return await this.executeTradingCommand('force');

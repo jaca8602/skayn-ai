@@ -63,7 +63,7 @@ echo "mcp:
 
 # 5. Start AI Bitcoin trading with Block's Goose! 🪿
 goose session
-# Then: "Start Bitcoin trading on mainnet"
+# Then: "Start Bitcoin trading with conservative strategy"
 ```
 
 ### **Option 2: Direct CLI Trading** 💻
@@ -78,10 +78,12 @@ npm install
 cp .env.example .env
 # Add your LN Markets credentials
 
-# Start trading
-./skayn start
-./skayn positions
-./skayn stop
+# Choose your strategy and start trading
+./skayn start                    # Shows strategy menu
+./skayn start conservative       # Safe trading (recommended)
+./skayn start enhanced          # Advanced trading
+./skayn positions               # Check current positions
+./skayn stop                    # Stop trading
 ```
 
 ---
@@ -108,39 +110,46 @@ cp .env.example .env
 
 ---
 
-## 🛠️ **Available AI Commands (via Goose)**
+## 🛠️ **Available Commands**
 
-### **Trading & Investment** 📈
+### **Skayn CLI Commands** 💻
 ```bash
-"Start autonomous Bitcoin trading" 🪿
-"Show my current trading positions and P&L" 🪿
-"Switch to aggressive trading strategy" 🪿
-"Set stop loss at 5% for all positions" 🪿
-"Close all positions and secure profits" 🪿
+# Strategy Selection & Trading
+./skayn start                    # Show strategy menu
+./skayn start conservative       # Safe trading (2% stop, 3% profit targets)
+./skayn start enhanced          # Advanced trading (dynamic targets)
+./skayn stop                    # Smart stop (panic if positions open)
+./skayn status                  # Complete trading status
+./skayn positions               # View positions with profit targets
+
+# Emergency Controls
+./skayn panic                   # Emergency stop confirmation
+./skayn confirm-panic           # Actually close all positions
+./skayn close-all              # Close all open positions
+
+# Funding & Balance
+./skayn balance                 # Check account balance
+./skayn deposit                 # Check deposit status
+./skayn invoice [amount]        # Create Lightning invoice
+./skayn limits                  # Check daily trading limits
+
+# Strategy & Analysis
+./skayn force                   # Force a trading decision
+./skayn enhanced               # Switch to enhanced strategy
+./skayn compare                # Compare strategy performance
 ```
 
-### **Lightning Network** ⚡
+### **Goose AI Commands** 🪿
 ```bash
-"Create a Lightning invoice for 100,000 sats" 🪿
+# Natural language commands in Goose session:
+"Start Bitcoin trading with conservative strategy" 🪿
+"Show my current trading positions and profit targets" 🪿
 "Check my Lightning Network balance" 🪿
-"Send 25,000 sats to [Lightning address]" 🪿
-"Generate a QR code for Bitcoin deposits" 🪿
-```
-
-### **Risk Management** 🛡️
-```bash
-"What's my maximum daily loss limit?" 🪿
-"Show me today's trading performance" 🪿
-"Emergency stop all trading activities" 🪿
-"Set conservative risk parameters" 🪿
-```
-
-### **Market Analysis** 📊
-```bash
-"What's the current Bitcoin price and trend?" 🪿
-"Analyze market conditions for trading opportunities" 🪿
-"Show me the RSI and MACD indicators" 🪿
-"When should I buy or sell based on technicals?" 🪿
+"Create a Lightning invoice for 50000 sats" 🪿
+"Switch to enhanced trading strategy" 🪿
+"Emergency stop all trading" 🪿
+"Force a trading decision now" 🪿
+"What's my trading status?" 🪿
 ```
 
 ---
@@ -149,36 +158,42 @@ cp .env.example .env
 
 | Tool | Description | Example Usage |
 |------|-------------|---------------|
-| `start_trading` | Begin autonomous Bitcoin trading | "Start trading with $50 positions" |
-| `check_positions` | View current positions & P&L | "What are my current profits?" |
-| `create_deposit_invoice` | Generate Lightning invoices | "Create invoice for 25000 sats" |
-| `get_balance` | Check Lightning Network balance | "How much Bitcoin do I have?" |
-| `emergency_stop` | Immediately halt all trading | "Emergency stop everything" |
-| `switch_strategy` | Change AI trading strategy | "Use aggressive strategy" |
-| `get_market_data` | Real-time Bitcoin prices | "What's the Bitcoin price?" |
-| `force_trade` | Manual trade execution | "Buy $100 of Bitcoin now" |
+| `start_trading` | Begin autonomous Bitcoin trading with strategy selection | "Start trading with conservative strategy" |
+| `check_positions` | View current positions, P&L, and profit targets | "Show my current positions and profit targets" |
+| `create_deposit_invoice` | Generate Lightning Network invoices | "Create invoice for 50000 sats" |
+| `check_balance` | Check Lightning Network balance and eligibility | "Check my Lightning balance" |
+| `stop_trading` | Stop trading agent with emergency option | "Emergency stop all trading" |
+| `switch_strategy` | Switch between conservative/enhanced strategies | "Switch to enhanced strategy" |
+| `get_trading_status` | Get comprehensive trading agent status | "What's my complete trading status?" |
+| `force_trade_decision` | Force immediate trading decision | "Make a trading decision now" |
 
 ---
 
-## 📊 **Trading Strategies**
+## 📊 **Trading Strategies (with AI Autonomy)**
 
-### **🎯 Conservative Strategy** (Default)
-- **Target**: Steady Bitcoin accumulation
-- **Risk**: 2% stop losses, $8 max positions
-- **Indicators**: Moving averages, RSI oversold/overbought
-- **Best For**: Long-term Bitcoin holders, new users
+### **🎯 Conservative Strategy** (Recommended for beginners)
+- **Profit Targets**: 3% (AI closes automatically)
+- **Stop Losses**: 2% 
+- **Position Size**: $8 max, 1.5x max leverage
+- **Decision Interval**: 60 seconds
+- **Indicators**: SMA, RSI, Bollinger Bands
+- **Best For**: Safe trading, new users
 
-### **🚀 Enhanced Strategy** (AI-Powered)
-- **Target**: Alpha generation and profit optimization
-- **Risk**: Dynamic position sizing, multi-timeframe analysis
-- **Indicators**: MACD, StochRSI, Bollinger Bands, EMA crossovers
-- **Best For**: Experienced traders, profit maximization
+### **🚀 Enhanced Strategy** (Advanced)
+- **Profit Targets**: 4-6% dynamic (AI closes automatically)
+- **Stop Losses**: 1.5-3% dynamic
+- **Position Size**: $5-$15 dynamic, 2x max leverage
+- **Decision Interval**: 30 seconds
+- **Indicators**: MACD, RSI divergence, StochRSI, EMA crossovers
+- **Best For**: Experienced traders, higher returns
 
-### **🧠 Adaptive Strategy** (Future)
-- **Target**: Machine learning-optimized trading
-- **Risk**: AI-determined based on market conditions
-- **Indicators**: Neural network predictions, sentiment analysis
-- **Best For**: Maximum autonomy and performance
+### **🧠 Adaptive Strategy** (Coming Soon)
+- **Profit Targets**: ML-optimized (AI closes automatically)
+- **Stop Losses**: AI-determined
+- **Position Size**: Machine learning optimized
+- **Decision Interval**: Adaptive
+- **Indicators**: Neural networks, pattern recognition
+- **Best For**: Maximum AI autonomy
 
 ---
 
@@ -224,8 +239,9 @@ skayn-ai/
 ```bash
 # Work on trading strategies and risk management
 npm run dev           # Hot reload development
-./skayn analyze       # Test trading logic
-./skayn positions     # Monitor live positions
+./skayn status        # Test trading logic
+./skayn positions     # Monitor live positions with profit targets
+./skayn start         # Test strategy selection interface
 tail -f logs/combined.log  # Watch trading activity
 ```
 

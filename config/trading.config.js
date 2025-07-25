@@ -4,10 +4,40 @@ module.exports = {
     maxPositionSize: parseInt(process.env.MAX_POSITION_SIZE) || 100,
     maxLeverage: parseInt(process.env.MAX_LEVERAGE) || 2,
     stopLossPercentage: parseFloat(process.env.STOP_LOSS_PERCENTAGE) || 2,
+    profitTargetPercentage: parseFloat(process.env.PROFIT_TARGET_PERCENTAGE) || 3,
     positionLimit: parseInt(process.env.POSITION_LIMIT) || 3,
     minOrderSize: 1,
     orderTypes: ['market', 'limit'],
     timeInForce: ['gtc', 'ioc', 'fok']
+  },
+
+  // Strategy-specific configurations
+  strategies: {
+    conservative: {
+      stopLossPercentage: 2.0,
+      profitTargetPercentage: 3.0,
+      maxPositionSize: 8, // USD
+      maxLeverage: 1.5,
+      decisionInterval: 60000, // 60 seconds
+      indicators: ['sma', 'rsi', 'bollinger']
+    },
+    enhanced: {
+      stopLossPercentage: { min: 1.5, max: 3.0 }, // Dynamic
+      profitTargetPercentage: { min: 4.0, max: 6.0 }, // Dynamic
+      maxPositionSize: { min: 5, max: 15 }, // USD, dynamic
+      maxLeverage: 2.0,
+      decisionInterval: 30000, // 30 seconds
+      indicators: ['macd', 'rsi_divergence', 'stochRSI', 'ema_crossover']
+    },
+    adaptive: {
+      // Placeholder for future ML-optimized strategy
+      stopLossPercentage: 'dynamic_ml',
+      profitTargetPercentage: 'dynamic_ml',
+      maxPositionSize: 'dynamic_ml',
+      maxLeverage: 'dynamic_ml',
+      decisionInterval: 'adaptive',
+      indicators: ['ml_pattern_recognition', 'adaptive_signals']
+    }
   },
 
   // Strategy Parameters

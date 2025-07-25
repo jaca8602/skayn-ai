@@ -607,6 +607,27 @@ class SkaynTradingAgent extends EventEmitter {
             }
           }
           
+          // 🎯 AI AUTONOMY: Check profit targets based on strategy
+          const profitTargetReached = this.checkProfitTarget(position, currentPrice);
+          if (profitTargetReached.shouldClose) {
+            logger.info('🎯 PROFIT TARGET REACHED - AI Auto-closing position', {
+              positionId: position.id.slice(-8),
+              strategy: this.config.strategy || this.currentStrategyType,
+              profitPercent: profitTargetReached.profitPercent.toFixed(2),
+              targetPercent: profitTargetReached.targetPercent,
+              profitSats: profitTargetReached.profitSats
+            });
+            
+            // AI autonomously closes the position
+            if (this.config.modules.riskManagement.realtimeMonitoring) {
+              await this.modules.tradeExecution.closePosition(position.id);
+              logger.info('✅ Position closed by AI at profit target', {
+                positionId: position.id.slice(-8),
+                profit: `${profitTargetReached.profitPercent.toFixed(2)}%`
+              });
+            }
+          }
+          
           // Check for position reduction
           const reduction = this.riskManager.shouldReducePosition(position, currentPrice);
           if (reduction.reduce) {
@@ -615,6 +636,46 @@ class SkaynTradingAgent extends EventEmitter {
           }
         }
       }
+    };
+  }
+
+  checkProfitTarget(position, currentPrice) {
+    const isLong = position.side === 'b';
+    const entryPrice = position.entry_price || position.price;
+    
+    // Calculate current profit percentage
+    const priceDiff = isLong ? (currentPrice - entryPrice) : (entryPrice - currentPrice);
+    const profitPercent = (priceDiff / entryPrice) * 100 * (position.leverage || 1);
+    
+    // Get strategy-specific profit target
+    const strategy = this.config.strategy || this.currentStrategyType || 'conservative';
+    const strategyConfig = config.strategies[strategy];
+    
+    let targetPercent;
+    if (strategyConfig && strategyConfig.profitTargetPercentage) {
+      if (typeof strategyConfig.profitTargetPercentage === 'object') {
+        // Enhanced strategy - dynamic targets
+        targetPercent = strategyConfig.profitTargetPercentage.min; // Use minimum for now
+      } else {
+        // Conservative strategy - fixed target
+        targetPercent = strategyConfig.profitTargetPercentage;
+      }
+    } else {
+      // Fallback to default
+      targetPercent = config.trading.profitTargetPercentage || 3;
+    }
+    
+    // Calculate profit in sats
+    const profitSats = Math.round(priceDiff * (position.quantity / 100000000) * 100000000);
+    
+    const shouldClose = profitPercent >= targetPercent;
+    
+    return {
+      shouldClose,
+      profitPercent,
+      targetPercent,
+      profitSats,
+      strategy
     };
   }
 
