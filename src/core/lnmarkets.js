@@ -125,33 +125,65 @@ class LNMarketsClient extends EventEmitter {
 
   async getPositions() {
     try {
-      // Try different API method names
+      // Get real positions from LN Markets API
       let positions = [];
+      
       try {
+        // Primary API call - get open positions
         positions = await this.restClient.futuresGetTrades({ type: 'open' });
+        logger.info(`📊 Fetched ${positions.length} open positions from LN Markets`);
       } catch (e) {
+        // Try alternative API methods
         try {
-          positions = await this.restClient.futuresGetTrades({ type: 'open' });
+          // Try without type parameter
+          const allTrades = await this.restClient.futuresGetTrades();
+          positions = allTrades.filter(trade => trade.state === 'open' || trade.status === 'open');
+          logger.info(`📊 Fetched ${positions.length} open positions via alternative API method`);
         } catch (e2) {
-          // Use mock positions for P&L tracking when API unavailable
-          positions = Array.from(this.mockPositions.values());
-          if (positions.length === 0) {
-            logger.warn('Could not fetch positions, using empty array');
-          }
+          logger.error('❌ Both API methods failed for position fetching:', {
+            primaryError: e.message,
+            fallbackError: e2.message,
+            network: this.config.network
+          });
+          
+          // CRITICAL: Don't return mock data - this masks real API issues
+          // Agent must know if it can't track positions
+          throw new Error(`Cannot fetch positions from LN Markets API: ${e.message}`);
         }
       }
       
+      // Update local position tracking
       this.positions.clear();
       if (Array.isArray(positions)) {
         positions.forEach(pos => {
           this.positions.set(pos.id, pos);
         });
+        
+        // Log position details for debugging
+        if (positions.length > 0) {
+          positions.forEach(pos => {
+            logger.info('🔍 Active Position:', {
+              id: pos.id,
+              side: pos.side,
+              quantity: pos.quantity,
+              price: pos.price,
+              margin: pos.margin,
+              pl: pos.pl
+            });
+          });
+        }
       }
 
       return Array.from(this.positions.values());
     } catch (error) {
-      logger.error('Failed to get positions', error);
-      return Array.from(this.mockPositions.values()); // Fallback to mock positions
+      logger.error('💥 Critical: Position tracking failed', {
+        error: error.message,
+        network: this.config.network,
+        action: 'POSITION_TRACKING_FAILURE'
+      });
+      
+      // NEVER return mock positions - this caused the 3,007 sats loss
+      throw error;
     }
   }
 
@@ -160,7 +192,7 @@ class LNMarketsClient extends EventEmitter {
       const params = {
         side: side === 'buy' ? 'b' : 's',  // Fix: API expects 'b'/'s' not 'buy'/'sell'
         type: 'm',  // Fix: API expects 'm' not 'market'
-        margin: Math.max(10000, Math.floor(quantity * 2000)), // Fix: Use margin in sats
+        margin: Math.min(4500, Math.floor(quantity * 1000)), // Use available balance minus buffer
         leverage: leverage
       };
 

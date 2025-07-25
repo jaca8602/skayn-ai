@@ -217,6 +217,19 @@ class GooseTradingAgent extends EventEmitter {
         return;
       }
 
+      // Step 0.5: Critical position sync - prevent the 3,007 sats loss scenario
+      try {
+        const currentPositions = await this.lnMarketsClient.getPositions();
+        this.syncPositionTracking(currentPositions);
+      } catch (error) {
+        logger.error('💥 CRITICAL: Cannot sync positions with LN Markets', {
+          error: error.message,
+          action: 'HALT_TRADING'
+        });
+        this.state.lastDecision = { action: 'HOLD', reason: 'Position tracking failure - trading halted for safety' };
+        return;
+      }
+
       // Step 1: Analyze market
       const marketAnalysis = await this.modules.marketAnalysis.analyze();
       
@@ -856,6 +869,56 @@ class GooseTradingAgent extends EventEmitter {
         message: 'Contact support immediately if positions are still open'
       };
     }
+  }
+
+  // Critical method to prevent position tracking desync
+  syncPositionTracking(currentPositions) {
+    const previousPositions = new Map(this.state.activePositions);
+    
+    // Update active positions with current data
+    this.state.activePositions.clear();
+    currentPositions.forEach(pos => {
+      this.state.activePositions.set(pos.id, pos);
+    });
+
+    // Detect closed positions (were in previous but not in current)
+    for (const [posId, prevPos] of previousPositions) {
+      if (!this.state.activePositions.has(posId)) {
+        logger.warn('🔍 Position closed detected (not tracked by agent):', {
+          positionId: posId,
+          side: prevPos.side,
+          action: 'POSITION_CLOSED_EXTERNALLY'
+        });
+        
+        // Update P&L tracking with estimated closure
+        this.pnlTracker.recordTrade({
+          id: posId,
+          side: prevPos.side,
+          quantity: prevPos.quantity,
+          entryPrice: prevPos.price,
+          exitPrice: this.marketData.getLatestPrice() || prevPos.price,
+          timestamp: new Date().toISOString(),
+          source: 'external_closure'
+        });
+      }
+    }
+
+    // Detect new positions (in current but not in previous)
+    for (const [posId, currentPos] of this.state.activePositions) {
+      if (!previousPositions.has(posId)) {
+        logger.info('🆕 New position detected:', {
+          positionId: posId,
+          side: currentPos.side,
+          quantity: currentPos.quantity,
+          price: currentPos.price
+        });
+      }
+    }
+
+    logger.info('📊 Position sync complete:', {
+      activePositions: this.state.activePositions.size,
+      previousCount: previousPositions.size
+    });
   }
 
   getStatus() {
