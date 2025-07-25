@@ -1,8 +1,8 @@
 # 🪿 Skayn.ai - Autonomous Bitcoin Trading Agent
 
-**Intelligent autonomous Bitcoin trading powered by Goose AI framework and real-time market data.**
+**Intelligent autonomous Bitcoin trading powered by Goose framework and real-time market data.**
 
-Skayn.ai combines Lightning Network integration, advanced technical analysis, and AI-driven decision making to create a fully autonomous Bitcoin trading system. Built for the Goose AI grant program with production-ready features.
+Skayn.ai combines Lightning Network integration, advanced technical analysis, and AI-driven decision making to create a fully autonomous Bitcoin trading system. Built for the Goose grant program with production-ready features.
 
 ---
 
@@ -93,7 +93,7 @@ cp .env.example .env
 ### **Core Components**
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Price APIs    │    │  Goose AI Agent  │    │  LN Markets     │
+│   Price APIs    │    │  Goose   Agent  │    │  LN Markets     │
 │ Coinbase/Kraken │◄──►│   Trading Logic  │◄──►│  (Bitcoin)      │
 │   (Real Data)   │    │   Risk Mgmt      │    │  Derivatives    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
@@ -266,7 +266,7 @@ Edit `config/trading.config.js`:
 
 ## 🏆 Grant Application
 
-**Built for Goose AI Grant Program:**
+**Built for Goose Grant Program:**
 - ✅ Full Goose framework integration
 - ✅ Autonomous decision making
 - ✅ Production-ready architecture  
@@ -292,7 +292,7 @@ Edit `config/trading.config.js`:
 
 ## 📄 License
 
-MIT License - Built with ❤️ for the Goose AI ecosystem
+MIT License - Built with ❤️ for the Goose ecosystem
 
 ---
 
