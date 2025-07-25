@@ -92,23 +92,20 @@ cp .env.example .env
 
 ### **Core Components**
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Price APIs    │    │  Goose   Agent  │    │  LN Markets     │
-│ Coinbase/Kraken │◄──►│   Trading Logic  │◄──►│  (Bitcoin)      │
-│   (Real Data)   │    │   Risk Mgmt      │    │  Derivatives    │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌────────────▼─────────────┐
-                    │     Lightning Network    │
-                    │   Instant Settlements    │
-                    └──────────────────────────┘
+🪿 Block's Goose Framework
+    ↓ Natural Language Commands
+🌉 MCP Extension (8 Trading Tools)
+    ↓ JSON-RPC Calls
+⚙️ Skayn.ai Trading Engine
+    ↓ REST/WebSocket APIs
+🏪 LN Markets Exchange
+    ↓ Lightning Network ⚡
+₿ Bitcoin Mainnet
 ```
 
 ### **File Structure**
 - `./skayn` - Simple command interface
-- `src/goose/trading-agent.js` - Main Goose AI trading logic
+- `src/skayn/trading-agent.js` - Main Skayn.ai trading logic
 - `src/core/market-data.js` - Real-time price data (Coinbase API)
 - `src/risk/risk-manager.js` - Position sizing and risk controls
 - `src/strategies/` - Trading strategies (basic + enhanced)
@@ -266,8 +263,8 @@ Edit `config/trading.config.js`:
 
 ## 🏆 Grant Application
 
-**Built for Goose Grant Program:**
-- ✅ Full Goose framework integration
+**Built for Block's Goose Grant Program:**
+- ✅ Real Block Goose framework integration (MCP extension)
 - ✅ Autonomous decision making
 - ✅ Production-ready architecture  
 - ✅ Real Bitcoin market integration
