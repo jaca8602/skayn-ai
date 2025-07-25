@@ -1,10 +1,12 @@
-require('dotenv').config();
+// Load environment-specific config
+const envFile = process.env.NODE_ENV === 'mainnet' ? '.env.mainnet' : '.env';
+require('dotenv').config({ path: envFile });
 const logger = require('./src/utils/logger');
 const LNMarketsClient = require('./src/core/lnmarkets');
 const MarketDataManager = require('./src/core/market-data');
 const MovingAverageStrategy = require('./src/strategies/moving-average-strategy');
 const RiskManager = require('./src/risk/risk-manager');
-const GooseTradingAgent = require('./src/goose/trading-agent');
+const SkaynTradingAgent = require('./src/skayn/trading-agent');
 const config = require('./config/trading.config');
 
 // Global agent instance
@@ -42,8 +44,8 @@ async function initializeAgent() {
     // Initialize strategy
     const strategy = new MovingAverageStrategy(marketDataManager, riskManager);
 
-    // Create Goose agent
-    agent = new GooseTradingAgent({
+    // Create Skayn.ai trading agent
+    agent = new SkaynTradingAgent({
       lnMarketsClient,
       marketDataManager,
       strategy,
@@ -147,7 +149,7 @@ async function main() {
 module.exports = {
   initializeAgent,
   main,
-  GooseTradingAgent,
+  SkaynTradingAgent,
   config
 };
 

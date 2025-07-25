@@ -49,7 +49,8 @@ const commandMap = {
   'enhanced': 'enableEnhanced',     // Fixed: backend expects enableEnhanced
   'compare': 'compareStrategies',   // Fixed: backend expects compareStrategies
   'limits': 'dailyLimits',          // Fixed: backend expects dailyLimits
-  'check': 'hypertradingCheck'      // Fixed: backend expects camelCase
+  'check': 'hypertradingCheck',     // Fixed: backend expects camelCase
+  'positions': 'positions'          // Check current position status
 };
 
 function showHelp() {
@@ -88,15 +89,15 @@ ${colors.red}${colors.bold}EMERGENCY:${colors.reset}
   ${colors.red}skayn panic${colors.reset}          Show panic confirmation
   ${colors.red}skayn confirm-panic${colors.reset}   Actually close all positions
 
-${colors.blue}Built with Goose AI framework for grant application${colors.reset}
+${colors.blue}Built with Block's Goose AI framework - MCP extension included${colors.reset}
 `);
 }
 
 function runGooseCommand(gooseCommand, params = []) {
-  console.log(`${colors.yellow}🪿 Executing:${colors.reset} node goose-entry.js ${gooseCommand}${params.length ? ' ' + params.join(' ') : ''}`);
+  console.log(`${colors.yellow}🔄 Executing:${colors.reset} node skayn-cli.js ${gooseCommand}${params.length ? ' ' + params.join(' ') : ''}`);
   
   // Execute the Node.js script directly
-  const nodeArgs = ['goose-entry.js', gooseCommand, ...params];
+  const nodeArgs = ['skayn-cli.js', gooseCommand, ...params];
   const node = spawn('node', nodeArgs, {
     stdio: 'inherit',
     cwd: process.cwd()
@@ -119,7 +120,7 @@ function runGooseCommand(gooseCommand, params = []) {
 // Handle special cases
 if (command === 'version' || command === '--version' || command === '-v') {
   console.log(`${colors.cyan}Skayn.ai v1.0.0${colors.reset} - Autonomous Bitcoin Trading Agent`);
-  console.log(`${colors.blue}Built with Goose AI framework${colors.reset}`);
+  console.log(`${colors.blue}Built with Block's Goose AI framework${colors.reset}`);
   process.exit(0);
 }
 

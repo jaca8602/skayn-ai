@@ -1,0 +1,18 @@
+{
+  "name": "skayn-bitcoin-trading-extension",
+  "version": "1.0.0",
+  "description": "Bitcoin trading agent extension for Block's Goose framework",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "keywords": ["goose", "bitcoin", "trading", "lightning", "block"],
+  "author": "Skayn.ai",
+  "license": "MIT"
+}

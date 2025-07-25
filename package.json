@@ -1,16 +1,17 @@
 {
   "name": "skayn-ai",
   "version": "1.0.0",
-  "description": "Skayn.ai - Autonomous Bitcoin trading system inspired by goose formation efficiency. Lightning-powered trading with Goose AI integration.",
+  "description": "Skayn.ai - Autonomous Bitcoin trading system inspired by migratory bird formation efficiency. Lightning-powered trading with Block's Goose AI framework integration.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "NODE_ENV=development node index.js",
     "status": "node index.js status",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "goose:start": "node goose-entry.js start",
-    "goose:status": "node goose-entry.js status",
-    "goose:analyze": "node goose-entry.js analyze"
+    "skayn:start": "node skayn-cli.js start",
+    "skayn:status": "node skayn-cli.js status",
+    "skayn:analyze": "node skayn-cli.js analyze",
+    "goose:extension": "node goose-extensions/bitcoin-trading-extension/server.js"
   },
   "keywords": [
     "skayn",
