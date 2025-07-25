@@ -1,183 +1,301 @@
-# 🪿 Skayn.ai
+# 🪿 Skayn.ai - Autonomous Bitcoin Trading Agent
 
-**Autonomous Bitcoin trading system inspired by the precision and coordination of geese flying in formation.**
+**Intelligent autonomous Bitcoin trading powered by Goose AI framework and real-time market data.**
 
-Skayn.ai leverages Lightning Network for instant settlements and Goose AI for intelligent decision-making, creating a platform where AI agents achieve autonomous financial freedom through Bitcoin's hardest money.
+Skayn.ai combines Lightning Network integration, advanced technical analysis, and AI-driven decision making to create a fully autonomous Bitcoin trading system. Built for the Goose AI grant program with production-ready features.
 
-## Features
+---
 
-- **LN Markets Integration**: Full testnet API integration with real-time WebSocket data
-- **Hypertrading System**: Ultra-low barrier (50k sats / ~$25-50) with 30-second decision intervals for dopamine-driven trading
-- **Satoshi-Native**: All balances and positions denominated in satoshis (proper Bitcoin behavior)
-- **Lightning Network Deposits**: Instant Bitcoin deposits via Lightning Network for seamless funding
-- **Dual Trading Strategies**: 
-  - Basic: Moving average strategy with RSI and Bollinger Bands
-  - Enhanced: MACD, RSI divergence, StochRSI, EMA crossovers, multi-indicator confluence
-- **Advanced Signal Analysis**: Divergence detection, multi-timeframe analysis, confluence scoring
-- **Deposit Management**: Automatic balance checking, minimum deposit enforcement (50k sats), responsible gambling limits
-- **Risk Management**: Position limits, stop losses, daily loss limits, drawdown protection
-- **Strategy Auto-Switching**: Performance-based automatic strategy selection
-- **Dopamine Notifications**: Real-time trade execution alerts for engagement
-- **Goose Compatible**: Modular architecture designed for Goose agent orchestration
-- **Real-time Monitoring**: Comprehensive logging and performance tracking
+## ✨ Key Features
 
-## Quick Start
+### 🚀 **Autonomous Trading**
+- **Hypertrading Mode**: Aggressive 60-second decision intervals with $100 positions
+- **Real-time Price Data**: Coinbase API with Kraken/CoinGecko backups (no more rate limiting!)
+- **Multi-strategy Support**: Basic MA crossover + Enhanced multi-indicator analysis
+- **Smart Position Management**: Automatic stop losses and profit taking
 
-### 1. Setup Credentials
+### ⚡ **Lightning Network Integration**
+- **Instant Deposits**: Lightning Network QR codes for seamless funding
+- **Testnet Ready**: Full LN Markets testnet integration
+- **Satoshi Native**: All balances in sats (proper Bitcoin behavior)
 
-Copy `.env.example` to `.env` and add your LN Markets testnet credentials:
+### 🎯 **Advanced Risk Management**
+- **Position Limits**: Max 3 concurrent positions, $100 each
+- **Stop Losses**: Automatic 2% stop losses (production) 
+- **Daily Limits**: $50 max daily loss protection
+- **Portfolio Heat**: 6% total risk exposure limit
 
+### 🧠 **Goose AI Integration**
+- **Grant Application Ready**: Built specifically for Goose framework
+- **Intelligent Orchestration**: AI-driven decision synthesis
+- **Command Interface**: Simple commands powered by Goose reasoning
+
+---
+
+## 🚀 Quick Start
+
+### 1. **Setup**
 ```bash
-cp .env.example .env
-```
-
-Get testnet credentials from: https://testnet.lnmarkets.com/
-
-### 2. Install Dependencies
-
-```bash
+# Clone and install
+git clone https://github.com/jaca8602/skayn-ai.git
+cd skayn-ai
 npm install
+
+# Setup environment
+cp .env.example .env
+# Add your LN Markets testnet credentials from https://testnet.lnmarkets.com/
 ```
 
-### 3. Run with Node.js
-
+### 2. **Simple Commands** (Recommended)
 ```bash
 # Start autonomous trading
-node index.js
+./skayn start
 
 # Check status
-node index.js status
+./skayn status
 
-# Execute specific commands
-node index.js start
-node index.js stop
-node index.js close-all
+# Emergency stop (close all positions)
+./skayn panic
+./skayn confirm-panic
+
+# View all commands
+./skayn help
 ```
 
-### 4. Execute with Goose
-
+### 3. **Live Management** (While Trading)
 ```bash
-# Using Goose CLI
-goose "Execute the trading agent at goose-trading-agent/goose-entry.js start"
-
-# Show full menu of all commands
-goose "Run goose-trading-agent/goose-entry.js menu"
-
-# Check agent status
-goose "Run goose-trading-agent/goose-entry.js status and show me the results"
-
-# Get help
-goose "Run goose-trading-agent/goose-entry.js help"
-
-# Analyze market
-goose "Use goose-trading-agent/goose-entry.js analyze to check market conditions"
-
-# Enhanced Strategy Commands
-goose "Run goose-trading-agent/goose-entry.js enhancedStrategy"
-goose "Run goose-trading-agent/goose-entry.js analyzeEnhanced"
-goose "Run goose-trading-agent/goose-entry.js compareStrategies"
-goose "Run goose-trading-agent/goose-entry.js switchStrategy enhanced"
-
-# Hypertrading & Deposit Management
-goose "Run goose-trading-agent/goose-entry.js depositStatus"
-goose "Run goose-trading-agent/goose-entry.js checkBalance"
-goose "Run goose-trading-agent/goose-entry.js depositInstructions"
-goose "Run goose-trading-agent/goose-entry.js hypertradingCheck"
-goose "Run goose-trading-agent/goose-entry.js dailyLimits"
-
-# Emergency Panic Button
-goose "Run goose-trading-agent/goose-entry.js panic"
-goose "Run goose-trading-agent/goose-entry.js stop"
-goose "Run goose-trading-agent/goose-entry.js confirmPanic"
+# In another terminal while agent is running:
+./live-status.sh    # Check current status
+./live-panic.sh     # Emergency stop
+./live-stop.sh      # Stop agent
 ```
 
-## Architecture
-
-### Core Modules
-
-- **LN Markets Client** (`src/core/lnmarkets.js`): API integration and WebSocket management
-- **Market Data Manager** (`src/core/market-data.js`): Price data collection and technical indicators
-- **Risk Manager** (`src/risk/risk-manager.js`): Position sizing, stop losses, portfolio heat
-- **Trading Strategies**: 
-  - Basic Strategy (`src/strategies/moving-average-strategy.js`): MA crossover with RSI
-  - Enhanced Strategy (`src/strategies/enhanced-strategy.js`): Multi-indicator analysis with MACD, RSI divergence, StochRSI, EMA crossovers
-- **Goose Agent** (`src/goose/trading-agent.js`): Autonomous decision-making engine with strategy switching
-
-### Goose Integration Points
-
-1. **goose-entry.js**: Primary interface for Goose commands
-2. **Modular Architecture**: Each component can be executed independently
-3. **Command Interface**: Structured for Goose orchestration
-4. **Logging System**: Goose-specific action and decision logging
-
-## Configuration
-
-Edit `config/trading.config.js` or use environment variables:
-
-- `MAX_POSITION_SIZE`: Maximum position size ($100 default)
-- `MAX_LEVERAGE`: Maximum leverage (2x default)
-- `STOP_LOSS_PERCENTAGE`: Stop loss percentage (2% default)
-- `GOOSE_DECISION_INTERVAL`: Decision frequency in ms (60000 default)
-
-## Risk Management
-
-- Position limits: Max 3 concurrent positions
-- Daily loss limit: $50
-- Maximum drawdown: 10%
-- Stop losses: 2% on all positions
-- Portfolio heat limit: 6% total risk
-
-## Monitoring
-
-Logs are stored in the `logs/` directory:
-- `combined.log`: All agent activity
-- `error.log`: Error tracking
-- `trades.log`: Trade execution history
-
-## Deployment
-
-### Digital Ocean
-
+### 4. **Advanced Commands**
 ```bash
-# Build for deployment
-npm run build
+# Trading controls
+./skayn force          # Force a trading decision
+./skayn close-all      # Close all positions
+./skayn enhanced       # Enable advanced strategy
 
-# Start with PM2
-pm2 start index.js --name goose-trading-agent
+# Account management  
+./skayn balance        # Check balance
+./skayn invoice 50000  # Create 50k sat deposit
+./skayn limits         # Check daily limits
 
-# Monitor
-pm2 logs goose-trading-agent
+# Strategy comparison
+./skayn compare        # Compare strategy performance
 ```
 
-### Docker
+---
 
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-CMD ["node", "index.js"]
+## 🏗️ Architecture
+
+### **Core Components**
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Price APIs    │    │  Goose AI Agent  │    │  LN Markets     │
+│ Coinbase/Kraken │◄──►│   Trading Logic  │◄──►│  (Bitcoin)      │
+│   (Real Data)   │    │   Risk Mgmt      │    │  Derivatives    │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+                    ┌────────────▼─────────────┐
+                    │     Lightning Network    │
+                    │   Instant Settlements    │
+                    └──────────────────────────┘
 ```
 
-## Safety Features
+### **File Structure**
+- `./skayn` - Simple command interface
+- `src/goose/trading-agent.js` - Main Goose AI trading logic
+- `src/core/market-data.js` - Real-time price data (Coinbase API)
+- `src/risk/risk-manager.js` - Position sizing and risk controls
+- `src/strategies/` - Trading strategies (basic + enhanced)
+- `src/utils/price-service.js` - Multi-API price service with rate limiting
 
-- Testnet only by default
-- Hard-coded risk limits
-- Automatic stop losses
-- Daily loss circuit breaker
-- Position size limits
+---
 
-## Development
+## 📊 Trading Strategies
 
+### **Basic Strategy**
+- Moving Average crossovers (SMA 10/30)
+- RSI oversold/overbought signals
+- Bollinger Bands mean reversion
+
+### **Enhanced Strategy**
+- MACD histogram analysis
+- RSI divergence detection  
+- Stochastic RSI momentum
+- EMA crossovers (9/21)
+- Multi-indicator confluence scoring
+
+### **Strategy Switching**
 ```bash
-# Run in development mode
-NODE_ENV=development node index.js
-
-# Test specific components
-node -e "require('./index').initializeAgent().then(a => console.log(a.getStatus()))"
+./skayn enhanced        # Enable advanced strategy
+./skayn strategy basic  # Switch to basic strategy  
+./skayn compare         # Compare performance
 ```
 
-## License
+---
 
-MIT
+## 🛡️ Safety Features
+
+### **Rate Limiting Protection**
+- 90-second price data caching
+- Maximum 50 API calls per hour
+- Automatic fallback to backup APIs
+- No more CoinGecko rate limit errors!
+
+### **Risk Controls**
+- **Position Limits**: Max 3 positions, $100 each
+- **Stop Losses**: Automatic 2% protection
+- **Daily Limits**: $50 max daily loss
+- **Emergency Stop**: Panic button closes all positions
+
+### **Testnet Safety**
+- Testnet-only by default
+- Mock balance system ($1000 virtual)
+- No real money at risk during testing
+
+---
+
+## 🔬 Research Roadmap
+
+### **Phase 1: On-Chain Analytics**
+- [ ] CryptoQuant API (exchange flows, reserves)
+- [ ] Glassnode integration (MVRV, SOPR, active addresses)
+- [ ] Exchange flow analysis
+
+### **Phase 2: Multi-Source Intelligence**
+- [ ] CSV data ingestion for backtesting
+- [ ] Social sentiment integration
+- [ ] DeFiLlama protocol metrics
+- [ ] Alt-coin flow correlation
+
+### **Phase 3: Advanced Fusion**
+- [ ] Multi-source signal fusion engine
+- [ ] Real-time research dashboard
+- [ ] Custom research data uploads
+
+*See `RESEARCH_ROADMAP.md` for detailed implementation plan.*
+
+---
+
+## 🚨 Emergency Procedures
+
+### **Panic Button System**
+```bash
+# Step 1: Request emergency stop
+./skayn panic
+
+# Step 2: Confirm to close all positions  
+./skayn confirm-panic
+
+# Alternative: While agent is running
+./live-panic.sh
+```
+
+### **If Agent is Stuck**
+```bash
+# Force stop from another terminal
+./live-stop.sh
+
+# Or kill the process
+pkill -f "node goose-entry.js"
+```
+
+---
+
+## 📈 Performance Monitoring
+
+### **Real-time Status**
+```bash
+./skayn status    # Full status report
+```
+
+**Sample Output:**
+```json
+{
+  "running": true,
+  "currentPrice": "$115,234.56",
+  "activePositions": 2,
+  "netPnL": "+$12.34",
+  "totalTrades": 15,
+  "winRate": "73.3%"
+}
+```
+
+### **Live Monitoring** 
+```bash
+./live-status.sh    # Status while trading
+tail -f logs/combined.log    # Live logs
+```
+
+---
+
+## 🛠️ Development
+
+### **Testing**
+```bash
+# Test price service
+node -e "require('./src/utils/price-service').getBitcoinPrice().then(console.log)"
+
+# Test trading agent
+./skayn start    # Watch for aggressive trades
+
+# Test panic system
+./skayn panic
+./skayn confirm-panic
+```
+
+### **Configuration**
+Edit `config/trading.config.js`:
+```javascript
+{
+  trading: {
+    maxPositionSize: 100,    // $100 positions
+    maxLeverage: 2,          // 2x leverage
+    stopLossPercentage: 2    // 2% stop loss
+  },
+  goose: {
+    decisionInterval: 60000  // 60 second decisions
+  }
+}
+```
+
+---
+
+## 🏆 Grant Application
+
+**Built for Goose AI Grant Program:**
+- ✅ Full Goose framework integration
+- ✅ Autonomous decision making
+- ✅ Production-ready architecture  
+- ✅ Real Bitcoin market integration
+- ✅ Comprehensive logging and monitoring
+- ✅ Emergency safety controls
+
+**Demo Ready:**
+- Real-time Bitcoin price data
+- Aggressive trading for demonstrations
+- Easy command interface
+- Live position monitoring
+
+---
+
+## 📞 Support
+
+- **GitHub Issues**: [Report bugs](https://github.com/jaca8602/skayn-ai/issues)
+- **Rate Limiting**: Fixed with multi-API backup system
+- **Emergency**: Use panic button or `./live-stop.sh`
+
+---
+
+## 📄 License
+
+MIT License - Built with ❤️ for the Goose AI ecosystem
+
+---
+
+*🪿 "Like geese flying in formation, Skayn.ai agents work together to achieve financial freedom through Bitcoin's sound money."*
