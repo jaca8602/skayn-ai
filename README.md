@@ -1,10 +1,10 @@
 # 🪿 Skayn.ai - Revolutionary AI-to-Bitcoin Bridge for Goose Framework
 
-**The first AI agent framework with real financial autonomy** 🪿⚡₿
+**An AI agent framework with real financial autonomy** 🪿⚡₿
 
 Skayn.ai brings **real money management** to Block's Goose framework through Lightning Network integration, enabling AI agents to autonomously trade Bitcoin, manage finances, and execute global payments. This breakthrough makes AI agents truly autonomous by giving them economic agency.
 
-> **Currently Trading Live**: 🟢 LONG position with **+$4.21 profit** on Bitcoin mainnet
+> **Currently Trading Live**
 
 ---
 
