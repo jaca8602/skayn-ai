@@ -38,7 +38,7 @@ goose session
 
 ## 🚀 **Quick Start Guide**
 
-### **Option 1: AI-Powered Trading (Goose Framework)** 🪿🤖
+### **Option 1: AI-Powered Trading (Block's Goose Framework)** 🪿🤖
 
 ```bash
 # 1. Install Block's Goose CLI
@@ -61,7 +61,7 @@ echo "mcp:
       command: node
       args: [$(pwd)/goose-extensions/bitcoin-trading-extension/server.js]" >> ~/.config/goose/config.yaml
 
-# 5. Start AI Bitcoin trading! 🪿
+# 5. Start AI Bitcoin trading with Block's Goose! 🪿
 goose session
 # Then: "Start Bitcoin trading on mainnet"
 ```
@@ -185,7 +185,7 @@ cp .env.example .env
 ## 🏗️ **Architecture: AI ↔ Bitcoin Bridge**
 
 ```
-🪿 Goose AI Framework
+🪿 Block's Goose Framework
     ↓ Natural Language Commands
 🌉 MCP Extension (8 Trading Tools)
     ↓ JSON-RPC Calls
@@ -216,12 +216,12 @@ npm run dev           # Hot reload development
 tail -f logs/combined.log  # Watch trading activity
 ```
 
-### **Goose Extension Development** 🪿
+### **Block Goose Extension Development** 🪿
 ```bash
 # Enhance AI capabilities and add new tools
 cd goose-extensions/bitcoin-trading-extension
 node server.js       # Test MCP tools directly
-goose session        # Test AI interaction
+goose session        # Test Block Goose interaction
 ```
 
 ### **Adding New AI Capabilities** ➕
@@ -336,11 +336,11 @@ git checkout -b feature/new-strategy
 ./skayn analyze  # Test strategy
 ```
 
-### **Goose AI Extensions** 🪿💡
+### **Block Goose Extensions** 🪿💡
 ```bash
-# Enhance AI capabilities with new MCP tools
+# Enhance Block Goose capabilities with new MCP tools
 # Edit goose-extensions/bitcoin-trading-extension/server.js
-goose session  # Test AI interaction
+goose session  # Test Block Goose interaction
 ```
 
 ### **Community Priorities** 📋
