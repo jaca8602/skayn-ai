@@ -197,11 +197,24 @@ cp .env.example .env
 ```
 
 ### **Key Components**
-- **Goose Framework**: AI agent interface and natural language processing
-- **MCP Extension**: Bridge between AI commands and trading logic
-- **Trading Engine**: Risk management, strategy execution, position tracking
+- **Block's Goose Framework**: AI agent interface and natural language processing (by Block)
+- **MCP Extension**: Bridge between Goose commands and Skayn.ai (your code)
+- **Skayn.ai Trading Engine**: Risk management, strategy execution, position tracking (your code)
 - **Lightning Network**: Instant Bitcoin deposits, withdrawals, and payments
 - **Market Data**: Real-time prices from Coinbase, Kraken, CoinGecko
+
+### **File Structure** 📁
+```
+skayn-ai/
+├── ./skayn                        # CLI for direct trading
+├── src/skayn/trading-agent.js     # Main Skayn.ai trading logic
+├── goose-extensions/              # Block Goose MCP integration
+│   └── bitcoin-trading-extension/ # Bridge to trading engine
+├── src/core/                      # LN Markets & market data
+├── src/strategies/                # Trading algorithms
+└── src/risk/                      # Risk management
+```
+*See [FILE_STRUCTURE.md](FILE_STRUCTURE.md) for complete details*
 
 ---
 

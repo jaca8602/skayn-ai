@@ -5,7 +5,7 @@ const PnLTracker = require('../utils/pnl-tracker');
 const EnhancedTradingStrategy = require('../strategies/enhanced-strategy');
 const DepositManager = require('../core/deposit-manager');
 
-class GooseTradingAgent extends EventEmitter {
+class SkaynTradingAgent extends EventEmitter {
   constructor({
     lnMarketsClient,
     marketDataManager,
@@ -1113,4 +1113,4 @@ class GooseTradingAgent extends EventEmitter {
   }
 }
 
-module.exports = GooseTradingAgent;
+module.exports = SkaynTradingAgent;
