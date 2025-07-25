@@ -17,6 +17,46 @@ class RiskManager {
       avgLoss: 0,
       sharpeRatio: 0
     };
+    
+    // Initialize risk level presets
+    this.initializeRiskLevels();
+  }
+  
+  initializeRiskLevels() {
+    const riskLevel = process.env.RISK_LEVEL || 'conservative';
+    
+    this.riskPresets = {
+      conservative: {
+        maxLeverage: 1,
+        maxPositionSize: parseInt(process.env.MAX_POSITION_SIZE) || 2,
+        positionLimit: 1,
+        stopLossPercentage: 1,
+        maxDailyLoss: 2,
+        decisionInterval: 180000, // 3 minutes
+        aggressiveness: 0.3
+      },
+      medium: {
+        maxLeverage: 2,
+        maxPositionSize: parseInt(process.env.MAX_POSITION_SIZE) || 3,
+        positionLimit: 2,
+        stopLossPercentage: 2,
+        maxDailyLoss: 5,
+        decisionInterval: 120000, // 2 minutes
+        aggressiveness: 0.6
+      },
+      ultra_degen: {
+        maxLeverage: 5,
+        maxPositionSize: parseInt(process.env.MAX_POSITION_SIZE) || 5,
+        positionLimit: 3,
+        stopLossPercentage: 5,
+        maxDailyLoss: 10,
+        decisionInterval: 60000, // 1 minute
+        aggressiveness: 0.9
+      }
+    };
+    
+    this.currentRiskLevel = this.riskPresets[riskLevel] || this.riskPresets.conservative;
+    logger.info(`🎯 Risk Level: ${riskLevel.toUpperCase()}`, this.currentRiskLevel);
   }
 
   async canOpenPosition(side, quantity, leverage = 2) {
@@ -34,20 +74,20 @@ class RiskManager {
         return { allowed: false, reason: 'Position limit reached' };
       }
 
-      // Check 2: Position size
-      if (quantity > this.tradingConfig.maxPositionSize) {
+      // Check 2: Position size (use dynamic risk level)
+      if (quantity > this.currentRiskLevel.maxPositionSize) {
         logger.warn('Position size exceeds limit', { 
           requested: quantity, 
-          limit: this.tradingConfig.maxPositionSize 
+          limit: this.currentRiskLevel.maxPositionSize 
         });
         return { allowed: false, reason: 'Position size exceeds limit' };
       }
 
-      // Check 3: Leverage limit
-      if (leverage > this.tradingConfig.maxLeverage) {
+      // Check 3: Leverage limit (use dynamic risk level)
+      if (leverage > this.currentRiskLevel.maxLeverage) {
         logger.warn('Leverage exceeds limit', { 
           requested: leverage, 
-          limit: this.tradingConfig.maxLeverage 
+          limit: this.currentRiskLevel.maxLeverage 
         });
         return { allowed: false, reason: 'Leverage exceeds limit' };
       }

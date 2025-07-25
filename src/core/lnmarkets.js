@@ -38,7 +38,7 @@ class LNMarketsClient extends EventEmitter {
 
       // Test connection and get initial balance
       try {
-        const userInfo = await this.restClient.user();
+        const userInfo = await this.restClient.userGet();
         logger.info('Connected to LN Markets', { 
           userId: userInfo.uid,
           network: this.config.network 
@@ -113,7 +113,7 @@ class LNMarketsClient extends EventEmitter {
 
   async updateBalance() {
     try {
-      const userInfo = await this.restClient.user();
+      const userInfo = await this.restClient.userGet();
       this.balance = userInfo.balance || 0;
       logger.info('Balance updated', { balance: this.balance });
       return this.balance;
@@ -128,10 +128,10 @@ class LNMarketsClient extends EventEmitter {
       // Try different API method names
       let positions = [];
       try {
-        positions = await this.restClient.futuresPositions({ type: 'open' });
+        positions = await this.restClient.futuresGetTrades({ type: 'open' });
       } catch (e) {
         try {
-          positions = await this.restClient.positions({ type: 'open' });
+          positions = await this.restClient.futuresGetTrades({ type: 'open' });
         } catch (e2) {
           // Use mock positions for P&L tracking when API unavailable
           positions = Array.from(this.mockPositions.values());
@@ -158,10 +158,10 @@ class LNMarketsClient extends EventEmitter {
   async openPosition(side, quantity, leverage = 2) {
     try {
       const params = {
-        side,
-        quantity,
-        leverage,
-        type: 'market'
+        side: side === 'buy' ? 'b' : 's',  // Fix: API expects 'b'/'s' not 'buy'/'sell'
+        type: 'm',  // Fix: API expects 'm' not 'market'
+        margin: Math.max(10000, Math.floor(quantity * 2000)), // Fix: Use margin in sats
+        leverage: leverage
       };
 
       logger.gooseDecision('OPEN_POSITION', {
@@ -178,8 +178,14 @@ class LNMarketsClient extends EventEmitter {
         position = await this.restClient.futuresNewTrade(params);
         logger.info('✅ REAL TRADE EXECUTED via LN Markets API');
       } catch (e) {
+        logger.error('❌ LN Markets API Error:', {
+          error: e.message,
+          status: e.status,
+          params: params,
+          network: this.config?.network || 'unknown'
+        });
         try {
-          position = await this.restClient.futuresNewPosition(params);
+          position = await this.restClient.futuresNewTrade(params);
         } catch (e2) {
           // For demo, create a mock position to show it would work
           logger.info('📈 MOCK TRADE EXECUTED (using correct API structure)');
@@ -259,10 +265,10 @@ class LNMarketsClient extends EventEmitter {
       // Try different API method names for closing positions
       let result;
       try {
-        result = await this.restClient.futuresClosePosition({ id: positionId });
+        result = await this.restClient.futuresCloseTrade(positionId);
       } catch (e) {
         try {
-          result = await this.restClient.closePosition({ id: positionId });
+          result = await this.restClient.futuresCloseTrade(positionId);
         } catch (e2) {
           logger.error('Could not close position with available methods');
           throw new Error('Position closing not available in current API version');
@@ -292,10 +298,10 @@ class LNMarketsClient extends EventEmitter {
 
   async updateStopLoss(positionId, stopLossPrice) {
     try {
-      const result = await this.restClient.futuresUpdatePosition({
+      const result = await this.restClient.futuresUpdateTrade({
         id: positionId,
-        type: 'stop_loss',
-        price: stopLossPrice
+        type: 'stoploss',  // Fixed: API expects 'stoploss' not 'stop_loss'
+        value: stopLossPrice  // Fixed: API expects 'value' not 'price'
       });
 
       logger.info('Stop loss updated', { 
@@ -312,7 +318,7 @@ class LNMarketsClient extends EventEmitter {
 
   async getMarketInfo() {
     try {
-      const info = await this.restClient.futuresGetMarketInfo();
+      const info = await this.restClient.futuresGetTicker();
       return info;
     } catch (error) {
       logger.error('Failed to get market info', error);
@@ -378,7 +384,7 @@ class LNMarketsClient extends EventEmitter {
   async getDepositAddress() {
     try {
       // Try to get a deposit address from LN Markets API
-      const result = await this.restClient.userdeposit();
+      const result = await this.restClient.userDeposit();
       return {
         invoice: result.invoice,
         qrCode: result.qr_code,
@@ -398,7 +404,7 @@ class LNMarketsClient extends EventEmitter {
   
   async createDepositInvoice(amountSats) {
     try {
-      const result = await this.restClient.userdeposit({
+      const result = await this.restClient.userDeposit({
         amount: amountSats
       });
       return {
@@ -419,7 +425,7 @@ class LNMarketsClient extends EventEmitter {
   
   async getDepositHistory() {
     try {
-      const deposits = await this.restClient.usergetdeposits();
+      const deposits = await this.restClient.userDepositHistory();
       return deposits.map(d => ({
         id: d.id,
         amount: d.amount,
@@ -435,7 +441,7 @@ class LNMarketsClient extends EventEmitter {
   
   async getDepositStatus(depositId) {
     try {
-      const deposit = await this.restClient.usergetdeposit(depositId);
+      const deposit = await this.restClient.userDepositHistory({ id: depositId });
       return {
         id: deposit.id,
         status: deposit.status,

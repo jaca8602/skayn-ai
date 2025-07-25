@@ -11,7 +11,7 @@ class DepositManager {
     this.lnMarketsClient = lnMarketsClient;
     this.config = config;
     // Denominate in satoshis for proper Bitcoin behavior
-    this.minHypertradingSats = 50000; // 50k sats (~$25-50 depending on BTC price) 
+    this.minHypertradingSats = process.env.MIN_BALANCE_SATS ? parseInt(process.env.MIN_BALANCE_SATS) : 1000; // Allow micro testing 
     this.maxHypertradingSats = 1000000; // 1M sats (~$500-1000) for safety
     this.lowBalanceThresholdSats = 20000; // 20k sats warning (~$10-20)
   }

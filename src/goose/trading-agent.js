@@ -397,9 +397,11 @@ class GooseTradingAgent extends EventEmitter {
         // Record position in P&L tracker
         this.pnlTracker.recordPosition(position);
         
-        // Set stop loss
-        const stopLoss = this.riskManager.calculateStopLoss(position.price, 'buy');
-        await this.lnMarketsClient.updateStopLoss(position.id, stopLoss);
+        // Set stop loss (only for real positions, not mock)
+        if (!position.id.toString().startsWith('mock-')) {
+          const stopLoss = this.riskManager.calculateStopLoss(position.price, 'buy');
+          await this.lnMarketsClient.updateStopLoss(position.id, stopLoss);
+        }
         
         this.state.activePositions.set(position.id, position);
         return position;
@@ -417,9 +419,11 @@ class GooseTradingAgent extends EventEmitter {
         // Record position in P&L tracker
         this.pnlTracker.recordPosition(position);
         
-        // Set stop loss
-        const stopLoss = this.riskManager.calculateStopLoss(position.price, 'sell');
-        await this.lnMarketsClient.updateStopLoss(position.id, stopLoss);
+        // Set stop loss (only for real positions, not mock)
+        if (!position.id.toString().startsWith('mock-')) {
+          const stopLoss = this.riskManager.calculateStopLoss(position.price, 'sell');
+          await this.lnMarketsClient.updateStopLoss(position.id, stopLoss);
+        }
         
         this.state.activePositions.set(position.id, position);
         return position;

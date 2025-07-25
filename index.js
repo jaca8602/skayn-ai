@@ -1,4 +1,6 @@
-require('dotenv').config();
+// Load environment-specific config
+const envFile = process.env.NODE_ENV === 'mainnet' ? '.env.mainnet' : '.env';
+require('dotenv').config({ path: envFile });
 const logger = require('./src/utils/logger');
 const LNMarketsClient = require('./src/core/lnmarkets');
 const MarketDataManager = require('./src/core/market-data');
