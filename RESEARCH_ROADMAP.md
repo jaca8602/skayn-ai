@@ -20,8 +20,6 @@
 
 ### Alternative Coin Flow Analysis
 - **Binance API**: Alt-coin to BTC flow ratios
-- **DeFiLlama**: Protocol TVL changes affecting Bitcoin
-- **Ethereum Gas Tracker**: DeFi activity correlation
 - **Stablecoin Flows**: USDT/USDC movements indicating market direction
 
 ### Historical Data Ingestion
