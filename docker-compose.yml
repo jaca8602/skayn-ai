@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  goose-trading-agent:
+    build: .
+    container_name: goose-trading-agent
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - LN_MARKETS_NETWORK=testnet
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Health check')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
