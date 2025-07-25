@@ -149,7 +149,7 @@ async function main() {
 module.exports = {
   initializeAgent,
   main,
-  GooseTradingAgent,
+  SkaynTradingAgent,
   config
 };
 
