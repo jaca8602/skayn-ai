@@ -70,7 +70,7 @@ class PnLTracker {
     positions.forEach(position => {
       if (this.openPositions.has(position.id)) {
         const storedPosition = this.openPositions.get(position.id);
-        const isLong = position.side === 'buy';
+        const isLong = position.side === 'b'; // LN Markets API uses 'b' for buy/long, 's' for sell/short
         
         // Calculate unrealized P&L
         const priceDiff = isLong ? 
@@ -107,7 +107,7 @@ class PnLTracker {
       return null;
     }
 
-    const isLong = position.side === 'buy';
+    const isLong = position.side === 'b'; // LN Markets API uses 'b' for buy/long, 's' for sell/short
     const priceDiff = isLong ? 
       (exitPrice - position.entry_price) : 
       (position.entry_price - exitPrice);

@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Goose Platform Entry Point
- * This file provides the interface for Goose to interact with the trading agent
+ * Skayn.ai CLI Entry Point
+ * Wrapper for the trading agent with Block's Goose framework integration
  */
 
 const { initializeAgent } = require('./index');
 const logger = require('./src/utils/logger');
 
-// Goose command handlers
+// Command handlers for the CLI
 const commands = {
   start: async () => {
     const agent = await initializeAgent();
@@ -205,11 +205,6 @@ const commands = {
     return await agent.handleCommand('panic');
   },
 
-  stop: async () => {
-    const agent = await initializeAgent();
-    return await agent.handleCommand('panic');
-  },
-
   emergency: async () => {
     const agent = await initializeAgent();
     return await agent.handleCommand('panic');
@@ -225,7 +220,7 @@ const commands = {
     return {
       success: true,
       title: "🦆 Skayn.ai - Autonomous Bitcoin Trading Agent",
-      subtitle: "Lightning-powered hypertrading with Goose AI",
+      subtitle: "Lightning-powered hypertrading with Block's Goose AI framework integration",
       
       sections: {
         "🚀 Basic Trading": {
@@ -268,12 +263,12 @@ const commands = {
       },
       
       quickStart: [
-        "1. Check deposit status: goose 'Run goose-trading-agent/goose-entry.js depositStatus'",
-        "2. Get deposit address: goose 'Run goose-trading-agent/goose-entry.js depositInstructions'", 
+        "1. Check deposit status: ./skayn depositStatus",
+        "2. Get deposit address: ./skayn depositInstructions", 
         "3. Deposit 50k+ sats via Lightning Network",
-        "4. Start trading: goose 'Run goose-trading-agent/goose-entry.js start'",
-        "5. Monitor: goose 'Run goose-trading-agent/goose-entry.js status'",
-        "6. Emergency stop: goose 'Run goose-trading-agent/goose-entry.js stop'"
+        "4. Start trading: ./skayn start",
+        "5. Monitor: ./skayn status",
+        "6. Emergency stop: ./skayn stop"
       ],
       
       safetyFeatures: [
@@ -286,13 +281,11 @@ const commands = {
         "🎯 Real-time trade execution notifications"
       ],
       
-      tips: [
-        "💡 Use 'enhancedStrategy' for better signal accuracy",
-        "💡 'depositStatus' shows exactly how many sats you need",
-        "💡 'stop' is smart - triggers panic if you have positions",
-        "💡 All balances shown in sats (proper Bitcoin behavior)",
-        "💡 Set phone down and let it trade autonomously",
-        "💡 Check 'status' anytime for dopamine hit updates"
+      gooseIntegration: [
+        "🪿 Built with Block's Goose AI framework",
+        "🔌 Custom MCP extension for Bitcoin trading",
+        "🤖 AI-powered autonomous decision making",
+        "🔄 Real-time market analysis and execution"
       ]
     };
   },
@@ -301,11 +294,11 @@ const commands = {
     return {
       success: true,
       title: "🦆 Skayn.ai Help",
-      description: "Autonomous Bitcoin trading system inspired by geese flying in formation",
+      description: "Autonomous Bitcoin trading system with Block's Goose AI framework integration",
       
       basicUsage: {
         description: "All commands use this format:",
-        example: "goose \"Run goose-trading-agent/goose-entry.js <command>\"",
+        example: "./skayn <command>",
         commands: [
           "menu - Show full command menu",
           "status - Check everything", 
@@ -313,6 +306,17 @@ const commands = {
           "stop - Stop (smart panic if positions open)",
           "depositStatus - Check balance requirements"
         ]
+      },
+      
+      gooseFramework: {
+        description: "Integration with Block's Goose AI framework",
+        features: [
+          "MCP extension for Bitcoin trading tools",
+          "AI-powered autonomous trading decisions", 
+          "Real-time market analysis capabilities",
+          "Lightning Network integration"
+        ],
+        usage: "Use with Goose CLI: goose session"
       },
       
       hypertrading: {
@@ -353,8 +357,8 @@ const commands = {
   }
 };
 
-// Parse Goose input
-async function handleGooseCommand(input) {
+// Parse input
+async function handleCommand(input) {
   try {
     const [command, ...args] = input.trim().split(' ');
     
@@ -362,21 +366,22 @@ async function handleGooseCommand(input) {
       return {
         error: 'Unknown command',
         availableCommands: Object.keys(commands),
-        usage: 'goose-entry.js <command> [args...]'
+        usage: './skayn <command> [args...]'
       };
     }
 
-    logger.gooseAction('GOOSE_COMMAND', { command, args });
+    logger.info(`🔄 Executing Skayn command: ${command}`, { command, args });
     const result = await commands[command](args);
     
     return {
       success: true,
       command,
       result,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      framework: 'Block Goose AI Integration'
     };
   } catch (error) {
-    logger.error('Goose command error', error);
+    logger.error('Skayn command error', error);
     return {
       success: false,
       error: error.message,
@@ -391,21 +396,22 @@ async function main() {
   
   if (!input) {
     console.log(JSON.stringify({
-      name: 'Goose Trading Agent',
+      name: 'Skayn.ai Bitcoin Trading Agent',
       version: '1.0.0',
-      description: 'Autonomous Bitcoin trading agent for LN Markets',
+      description: 'Autonomous Bitcoin trading agent with Block Goose AI framework integration',
+      framework: 'Block Goose AI',
       commands: Object.keys(commands),
-      usage: 'goose-entry.js <command> [args...]'
+      usage: './skayn <command> [args...]'
     }, null, 2));
     return;
   }
 
-  const result = await handleGooseCommand(input);
+  const result = await handleCommand(input);
   console.log(JSON.stringify(result, null, 2));
   
   // Keep process alive for start command
   if (input.startsWith('start')) {
-    logger.info('Agent started via Goose. Process will continue running...');
+    logger.info('Agent started via Skayn CLI. Process will continue running...');
   } else {
     process.exit(0);
   }
@@ -418,4 +424,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { handleGooseCommand };
+module.exports = { handleCommand };

@@ -36,7 +36,7 @@ class RiskManager {
         aggressiveness: 0.3
       },
       medium: {
-        maxLeverage: 2,
+        maxLeverage: 1,
         maxPositionSize: parseInt(process.env.MAX_POSITION_SIZE) || 3,
         positionLimit: 2,
         stopLossPercentage: 2,
@@ -59,7 +59,7 @@ class RiskManager {
     logger.info(`🎯 Risk Level: ${riskLevel.toUpperCase()}`, this.currentRiskLevel);
   }
 
-  async canOpenPosition(side, quantity, leverage = 2) {
+  async canOpenPosition(side, quantity, leverage = 1) {
     try {
       // HYPERTRADING MODE: Enable micro-position risk checks
       logger.info('⚡ HYPERTRADING: Quick risk assessment for micro-positions');
@@ -165,33 +165,36 @@ class RiskManager {
   }
 
   calculatePositionSize(balance, riskPercentage = null) {
-    // TESTNET: Use fixed small position sizes for hypertrading
-    const isTestnet = process.env.LN_MARKETS_NETWORK === 'testnet' || process.env.NODE_ENV === 'development';
+    // Get current BTC price (already cached, no extra API calls)
+    const currentPrice = this.marketData?.getLatestPrice() || 116000;
     
-    if (isTestnet) {
-      // Fixed $100 position for testnet hypertrading
-      const maxPositionUSD = 100;
-      const btcPrice = 120000; // Default BTC price for calculation
-      const positionSizeBTC = maxPositionUSD / btcPrice; // ~0.0008 BTC
-      
-      logger.info('🧪 TESTNET: Using fixed hypertrading position size', {
-        positionUSD: `$${maxPositionUSD}`,
-        positionBTC: positionSizeBTC.toFixed(8),
-        btcPrice: `$${btcPrice.toLocaleString()}`
-      });
-      
-      return positionSizeBTC;
-    }
+    // Convert balance from sats to USD
+    const balanceUSD = (balance / 100000000) * currentPrice;
     
-    // Production logic
+    // Calculate risk amount (default 2% of balance)
     const risk = riskPercentage || this.config.riskPerTrade;
-    const riskAmount = (balance * risk) / 100;
-    const positionSize = Math.min(
-      riskAmount * this.tradingConfig.maxLeverage,
-      this.tradingConfig.maxPositionSize
-    );
+    const riskAmountUSD = (balanceUSD * risk) / 100;
+    
+    // Set minimum $6 position for LN Markets, cap at max from .env
+    const maxPositionUSD = this.tradingConfig.maxPositionSize; // $3 from your .env
+    const minPositionUSD = 6.00; // $6 minimum for real trades (LN Markets requirement)
+    const positionUSD = Math.max(minPositionUSD, Math.min(riskAmountUSD, maxPositionUSD));
+    
+    // Convert back to BTC for the API
+    const positionSizeBTC = positionUSD / currentPrice;
+    
+    logger.info('💰 SMART POSITION SIZING', {
+      balanceSats: balance,
+      balanceUSD: `$${balanceUSD.toFixed(2)}`,
+      riskPercent: `${risk}%`,
+      riskAmountUSD: `$${riskAmountUSD.toFixed(2)}`,
+      maxCapUSD: `$${maxPositionUSD}`,
+      finalPositionUSD: `$${positionUSD.toFixed(2)}`,
+      finalPositionBTC: positionSizeBTC.toFixed(8),
+      btcPrice: `$${currentPrice.toLocaleString()}`
+    });
 
-    return Math.floor(positionSize);
+    return positionSizeBTC;
   }
 
   async updateTradeResult(trade) {
@@ -290,7 +293,8 @@ class RiskManager {
 
   shouldReducePosition(position, currentPrice) {
     // Check if position is in profit and should be partially closed
-    const pl = position.side === 'buy' 
+    const pl = position.side === 'b' // LN Markets API uses 'b' for buy/long, 's' for sell/short
+      
       ? (currentPrice - position.entry_price) / position.entry_price
       : (position.entry_price - currentPrice) / position.entry_price;
 
@@ -308,7 +312,8 @@ class RiskManager {
   }
 
   getPositionHealth(position, currentPrice) {
-    const pl = position.side === 'buy' 
+    const pl = position.side === 'b' // LN Markets API uses 'b' for buy/long, 's' for sell/short
+      
       ? (currentPrice - position.entry_price) / position.entry_price
       : (position.entry_price - currentPrice) / position.entry_price;
 

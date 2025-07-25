@@ -1,0 +1,11 @@
+# Goose Configuration for Skayn Bitcoin Trading Agent
+# Add this to your ~/.config/goose/config.yaml
+
+mcp:
+  servers:
+    skayn-bitcoin-trading:
+      command: node
+      args:
+        - /Users/jamescarpenter/goose-trading-agent/goose-extensions/bitcoin-trading-extension/server.js
+      env:
+        NODE_ENV: production

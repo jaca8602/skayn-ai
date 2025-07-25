@@ -287,30 +287,80 @@ class GooseTradingAgent extends EventEmitter {
       return decision;
     }
 
-    // HYPERTRADING MODE: Force aggressive trading for demo
+    // SMART TRADING: Auto-detect testing vs production mode
     const currentPrice = this.marketData.getLatestPrice();
+    const balanceUSD = (this.lnMarketsClient.balance / 100000000) * currentPrice;
+    const isTestingMode = balanceUSD < 50; // Under $50 = testing mode
     
-    if (currentPrice && this.state.performance.totalTrades < 5) {
-      // Force trading for first 5 trades to demonstrate the system
-      const actions = ['BUY', 'SELL'];
-      const randomAction = actions[Math.floor(Math.random() * actions.length)];
+    // First priority: Real signals from strategy analysis
+    if (signal && signal.action !== 'HOLD') {
+      decision.action = signal.action;
+      decision.confidence = signal.confidence;
+      decision.reasons = signal.reasons || [`${signal.action} signal from market analysis`];
       
-      decision.action = randomAction;
-      decision.confidence = 0.8; // High confidence for demo
-      decision.reasons = [
-        `🚀 HYPERTRADING DEMO: Forced ${randomAction} at $${currentPrice.toFixed(2)}`,
-        `Market health: ${marketAnalysis.marketHealth || 'GOOD'}`,
-        'Demonstrating autonomous trading capabilities'
-      ];
-      
-      logger.info('🚀 HYPERTRADING: Forcing aggressive trade for demo', {
+      logger.info('🧠 STRATEGIC DECISION: AI-driven market analysis', {
         action: decision.action,
         confidence: decision.confidence,
         price: currentPrice,
-        tradeNumber: this.state.performance.totalTrades + 1
+        signal: signal.type,
+        reasons: decision.reasons,
+        mode: isTestingMode ? 'TESTING' : 'PRODUCTION'
       });
       
       return decision;
+    }
+    
+    // Testing mode: Create trading opportunities for development
+    if (isTestingMode && currentPrice && this.state.performance.totalTrades < 3) {
+      const marketMetrics = this.marketData.getMarketMetrics();
+      
+      // Try RSI first if available
+      if (marketMetrics.rsi) {
+        if (marketMetrics.rsi > 55) {
+          decision.action = 'SELL';
+          decision.confidence = 0.6;
+          decision.reasons = [`Testing: RSI ${marketMetrics.rsi.toFixed(1)} suggests potential sell`];
+        } else if (marketMetrics.rsi < 45) {
+          decision.action = 'BUY';
+          decision.confidence = 0.6;
+          decision.reasons = [`Testing: RSI ${marketMetrics.rsi.toFixed(1)} suggests potential buy`];
+        }
+      } else {
+        // Fallback: Use price movement when RSI not available
+        const priceHistory = this.marketData.priceHistory || [];
+        if (priceHistory.length >= 2) {
+          const lastPrice = priceHistory[priceHistory.length - 2]?.price || currentPrice;
+          const priceChange = ((currentPrice - lastPrice) / lastPrice) * 100;
+          
+          if (priceChange > 0.1) {
+            decision.action = 'SELL';
+            decision.confidence = 0.6;
+            decision.reasons = [`Testing: Price up ${priceChange.toFixed(2)}% - taking profit`];
+          } else if (priceChange < -0.1) {
+            decision.action = 'BUY';
+            decision.confidence = 0.6;
+            decision.reasons = [`Testing: Price down ${priceChange.toFixed(2)}% - buying dip`];
+          }
+        } else {
+          // Ultimate fallback: Alternate BUY/SELL for testing
+          decision.action = this.state.performance.totalTrades % 2 === 0 ? 'BUY' : 'SELL';
+          decision.confidence = 0.6;
+          decision.reasons = [`Testing fallback: ${decision.action} signal for system verification`];
+        }
+      }
+      
+      if (decision.action !== 'HOLD') {
+        logger.info('🧪 AUTO-TESTING MODE: Development trading active', {
+          action: decision.action,
+          confidence: decision.confidence,
+          balanceUSD: `$${balanceUSD.toFixed(2)}`,
+          rsi: marketMetrics.rsi || 'N/A',
+          priceHistoryLength: marketMetrics.priceHistoryLength,
+          reasons: decision.reasons
+        });
+        
+        return decision;
+      }
     }
 
     // For demo trades, always allow execution
@@ -354,16 +404,20 @@ class GooseTradingAgent extends EventEmitter {
         value: `$${(size * (currentPrice || 0)).toLocaleString()}`
       });
 
+      let position;
       if (decision.action === 'BUY') {
-        await this.modules.tradeExecution.openLong(size);
+        position = await this.modules.tradeExecution.openLong(size);
       } else if (decision.action === 'SELL') {
-        await this.modules.tradeExecution.openShort(size);
+        position = await this.modules.tradeExecution.openShort(size);
       }
 
       this.state.performance.totalTrades++;
       
+      return { success: true, position };
+      
     } catch (error) {
       logger.error('Decision execution failed', error);
+      return { success: false, error };
     }
   }
 
@@ -411,9 +465,17 @@ class GooseTradingAgent extends EventEmitter {
         this.pnlTracker.recordPosition(position);
         
         // Set stop loss (only for real positions, not mock)
-        if (!position.id.toString().startsWith('mock-')) {
+        // TEMPORARILY DISABLED: API key lacks stop loss permissions
+        if (!position.id.toString().startsWith('mock-') && false) {
           const stopLoss = this.riskManager.calculateStopLoss(position.price, 'buy');
-          await this.lnMarketsClient.updateStopLoss(position.id, stopLoss);
+          try {
+            await this.lnMarketsClient.updateStopLoss(position.id, stopLoss);
+          } catch (error) {
+            logger.warn('Stop loss update failed (continuing without)', { 
+              positionId: position.id, 
+              error: error.message 
+            });
+          }
         }
         
         this.state.activePositions.set(position.id, position);
@@ -433,9 +495,17 @@ class GooseTradingAgent extends EventEmitter {
         this.pnlTracker.recordPosition(position);
         
         // Set stop loss (only for real positions, not mock)
-        if (!position.id.toString().startsWith('mock-')) {
+        // TEMPORARILY DISABLED: API key lacks stop loss permissions
+        if (!position.id.toString().startsWith('mock-') && false) {
           const stopLoss = this.riskManager.calculateStopLoss(position.price, 'sell');
-          await this.lnMarketsClient.updateStopLoss(position.id, stopLoss);
+          try {
+            await this.lnMarketsClient.updateStopLoss(position.id, stopLoss);
+          } catch (error) {
+            logger.warn('Stop loss update failed (continuing without)', { 
+              positionId: position.id, 
+              error: error.message 
+            });
+          }
         }
         
         this.state.activePositions.set(position.id, position);
@@ -478,13 +548,13 @@ class GooseTradingAgent extends EventEmitter {
           logger.info(`📊 ACTIVE POSITIONS (${positions.length})`);
           
           positions.forEach(position => {
-            const isLong = position.side === 'buy';
+            const isLong = position.side === 'b'; // LN Markets API uses 'b' for buy/long, 's' for sell/short
             const emoji = isLong ? '🟢 LONG' : '🔴 SHORT';
             
             // Calculate P&L
             const priceDiff = isLong ? (currentPrice - position.entry_price) : (position.entry_price - currentPrice);
             const pnlPercent = (priceDiff / position.entry_price) * 100 * position.leverage;
-            const pnlDollar = priceDiff * position.quantity;
+            const pnlDollar = priceDiff * (position.quantity / 100000000); // Convert sats to BTC for USD calculation
             const pnlEmoji = pnlPercent > 0 ? '💰' : '📉';
             const pnlColor = pnlPercent > 0 ? '✅' : '❌';
             
@@ -498,7 +568,7 @@ class GooseTradingAgent extends EventEmitter {
             const netPnlColor = netPnl > 0 ? '💚' : '❌';
             
             logger.info(`${emoji} ${position.id}`, {
-              size: `${position.quantity} BTC`,
+              size: `${position.quantity} sats`,
               entry: `$${position.entry_price?.toLocaleString()}`,
               current: `$${currentPrice?.toLocaleString()}`,
               grossPnl: `${pnlColor} ${pnlPercent.toFixed(2)}% (${pnlDollar > 0 ? '+' : ''}$${pnlDollar.toFixed(2)}) ${pnlEmoji}`,

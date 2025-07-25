@@ -54,7 +54,8 @@ class LNMarketsClient extends EventEmitter {
       try {
         await this.initializeWebSocket();
       } catch (wsError) {
-        logger.warn('WebSocket initialization failed, continuing without real-time data', wsError.message);
+        // Suppress WebSocket errors - not critical for trading
+        logger.debug('WebSocket not available, using REST API only');
       }
 
       this.isConnected = true;
@@ -129,16 +130,31 @@ class LNMarketsClient extends EventEmitter {
       let positions = [];
       
       try {
-        // Primary API call - get open positions
-        positions = await this.restClient.futuresGetTrades({ type: 'open' });
-        logger.info(`📊 Fetched ${positions.length} open positions from LN Markets`);
+        // Try 'running' type first (this is what works for our position)
+        positions = await this.restClient.futuresGetTrades({ type: 'running' });
+        logger.info(`📊 Fetched ${positions.length} running positions from LN Markets`);
       } catch (e) {
         // Try alternative API methods
         try {
-          // Try without type parameter
+          // Try without type parameter - get ALL trades
           const allTrades = await this.restClient.futuresGetTrades();
-          positions = allTrades.filter(trade => trade.state === 'open' || trade.status === 'open');
-          logger.info(`📊 Fetched ${positions.length} open positions via alternative API method`);
+          logger.info(`📊 Total trades from API: ${allTrades.length}`);
+          
+          // Filter for running positions (multiple status checks)
+          positions = allTrades.filter(trade => 
+            trade.running === true || 
+            trade.open === true || 
+            trade.state === 'open' || 
+            trade.status === 'open' ||
+            (trade.closed === false && trade.canceled === false)
+          );
+          logger.info(`📊 Filtered to ${positions.length} open/running positions`);
+          
+          // Debug: log all trade statuses
+          allTrades.forEach(trade => {
+            logger.info(`🔍 Trade ${trade.id}: running=${trade.running}, open=${trade.open}, closed=${trade.closed}, canceled=${trade.canceled}`);
+          });
+          
         } catch (e2) {
           logger.error('❌ Both API methods failed for position fetching:', {
             primaryError: e.message,
@@ -187,14 +203,32 @@ class LNMarketsClient extends EventEmitter {
     }
   }
 
-  async openPosition(side, quantity, leverage = 2) {
+  async openPosition(side, quantity, leverage = 1) {
     try {
+      // Convert BTC quantity to proper satoshi margin
+      const currentPrice = this.marketData?.getLatestPrice() || 116000;
+      const positionValueUSD = quantity * currentPrice; // e.g. $2.00
+      const marginUSD = positionValueUSD / leverage; // e.g. $1.00 with 2x leverage
+      const marginSats = Math.floor((marginUSD / currentPrice) * 100000000); // Convert to sats
+      
+      // Ensure minimum margin (LN Markets requires >0)
+      const finalMargin = Math.max(marginSats, 1000); // Minimum 1000 sats
+      
       const params = {
-        side: side === 'buy' ? 'b' : 's',  // Fix: API expects 'b'/'s' not 'buy'/'sell'
-        type: 'm',  // Fix: API expects 'm' not 'market'
-        margin: Math.min(4500, Math.floor(quantity * 1000)), // Use available balance minus buffer
+        side: side === 'buy' ? 'b' : 's',  // API expects 'b'/'s' not 'buy'/'sell'
+        type: 'm',  // API expects 'm' not 'market'
+        margin: finalMargin,  // Use margin-based trading with actual sats
         leverage: leverage
       };
+      
+      logger.info('💰 MARGIN CALCULATION', {
+        quantity: `${quantity.toFixed(8)} BTC`,
+        positionValueUSD: `$${positionValueUSD.toFixed(2)}`,
+        marginUSD: `$${marginUSD.toFixed(2)}`,
+        marginSats: marginSats,
+        finalMargin: finalMargin,
+        leverage: `${leverage}x`
+      });
 
       logger.gooseDecision('OPEN_POSITION', {
         side,
@@ -203,43 +237,25 @@ class LNMarketsClient extends EventEmitter {
         rationale: 'Market conditions favorable for entry'
       });
 
-      // Try the correct LN Markets API methods
+      // Execute the real LN Markets trade
       let position;
       try {
-        // Use the correct method: futuresNewTrade
         position = await this.restClient.futuresNewTrade(params);
         logger.info('✅ REAL TRADE EXECUTED via LN Markets API');
       } catch (e) {
+        // Intelligent error analysis for debugging
+        const errorAnalysis = this.analyzeLNMarketsError(e, params);
+        
         logger.error('❌ LN Markets API Error:', {
           error: e.message,
           status: e.status,
           params: params,
-          network: this.config?.network || 'unknown'
+          network: this.config?.network || 'unknown',
+          analysis: errorAnalysis
         });
-        try {
-          position = await this.restClient.futuresNewTrade(params);
-        } catch (e2) {
-          // For demo, create a mock position to show it would work
-          logger.info('📈 MOCK TRADE EXECUTED (using correct API structure)');
-          const currentPrice = this.marketData?.getLatestPrice() || 117465;
-          const positionValue = params.quantity * currentPrice;
-          
-          // Calculate LN Markets fees
-          const fees = this.calculateFees(params.quantity, currentPrice, params.leverage);
-          
-          position = {
-            id: 'mock-' + Date.now(),
-            side: params.side,
-            quantity: params.quantity,
-            leverage: params.leverage,
-            price: currentPrice,
-            entry_price: currentPrice,
-            timestamp: new Date().toISOString(),
-            fees: fees,
-            positionValue: positionValue,
-            margin: positionValue / params.leverage
-          };
-        }
+        
+        // NO MOCK POSITIONS - throw the error so we know what's wrong
+        throw new Error(`LN Markets API failed: ${e.message}. Analysis: ${errorAnalysis.likely_cause}`);
       }
       
       // Highlight the trade execution with emojis and formatting
@@ -384,6 +400,59 @@ class LNMarketsClient extends EventEmitter {
         }
       }, this.config.reconnectInterval);
     }
+  }
+
+  // Intelligent analysis of LN Markets API errors
+  analyzeLNMarketsError(error, params) {
+    const analysis = {
+      type: 'unknown',
+      likely_cause: 'API error',
+      action_required: 'Contact LN Markets support'
+    };
+
+    // Check for HTTP 500 Internal Server Error
+    if (error.status === 500 && error.message?.includes('Internal error')) {
+      // Compare requested margin with current balance
+      const requestedMargin = params.margin || 0;
+      const currentBalance = this.balance || 0;
+      const shortfall = requestedMargin - currentBalance;
+
+      if (shortfall > 0) {
+        // Likely insufficient balance
+        analysis.type = 'insufficient_balance';
+        analysis.likely_cause = `Insufficient balance: need ${shortfall} more sats`;
+        analysis.action_required = `Deposit at least ${shortfall} sats (have ${currentBalance}, need ${requestedMargin})`;
+        analysis.balance_details = {
+          current: currentBalance,
+          required: requestedMargin,
+          shortfall: shortfall
+        };
+      } else {
+        // Margin seems fine, probably real API issue
+        analysis.type = 'api_outage';
+        analysis.likely_cause = 'LN Markets internal server error (not balance related)';
+        analysis.action_required = 'Wait for LN Markets to resolve server issues';
+        analysis.balance_details = {
+          current: currentBalance,
+          required: requestedMargin,
+          sufficient: true
+        };
+      }
+    } else if (error.status === 400) {
+      analysis.type = 'bad_request';
+      analysis.likely_cause = 'Invalid API parameters';
+      analysis.action_required = 'Check trade parameters and API format';
+    } else if (error.status === 401) {
+      analysis.type = 'auth_error';
+      analysis.likely_cause = 'API credentials invalid or expired';
+      analysis.action_required = 'Check API keys and permissions';
+    } else if (error.status === 429) {
+      analysis.type = 'rate_limit';
+      analysis.likely_cause = 'Too many API requests';
+      analysis.action_required = 'Wait before retrying';
+    }
+
+    return analysis;
   }
 
   calculateFees(quantity, price, leverage) {
