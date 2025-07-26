@@ -152,7 +152,6 @@ cp .env.example .env
 ### **🎯 Conservative Strategy** (Recommended for beginners)
 - **Profit Targets**: 3% (AI closes automatically)
 - **Stop Losses**: 2% 
-- **Position Size**: $8 max, 1.5x max leverage
 - **Decision Interval**: 60 seconds
 - **Indicators**: SMA, RSI, Bollinger Bands
 - **Best For**: Safe trading, new users
@@ -160,20 +159,11 @@ cp .env.example .env
 ### **🚀 Enhanced Strategy** (Advanced)
 - **Profit Targets**: 4-6% dynamic (AI closes automatically)
 - **Stop Losses**: 1.5-3% dynamic
-- **Position Size**: $5-$15 dynamic, 2x max leverage
 - **Decision Interval**: 30 seconds
 - **Indicators**: MACD, RSI divergence, StochRSI, EMA crossovers
 - **Best For**: Experienced traders, higher returns
 
-### **🧠 Adaptive Strategy** (Coming Soon)
-- **Profit Targets**: ML-optimized (AI closes automatically)
-- **Stop Losses**: AI-determined
-- **Position Size**: Machine learning optimized
-- **Decision Interval**: Adaptive
-- **Indicators**: Neural networks, pattern recognition
-- **Best For**: Maximum AI autonomy
-
----
+###**🧠 Adaptive Strategy** (Coming Soon👀)
 
 ## 🏗️ **Architecture: AI ↔ Bitcoin Bridge**
 
@@ -184,7 +174,7 @@ cp .env.example .env
     ↓ JSON-RPC Calls
 ⚙️ Skayn.ai Trading Engine
     ↓ REST/WebSocket APIs
-🏪 LN Markets Exchange
+🏪 Lightning Exchange(s)
     ↓ Lightning Network ⚡
 ₿ Bitcoin Mainnet
 ```
@@ -253,8 +243,7 @@ goose session        # Test Block Goose interaction
 - **Sandboxed Execution**: Isolated trading environment
 - **Audit Logs**: Complete trading history and decisions
 
-### **Lightning Security** ⚡🛡️
-- **Self-Custody**: Your keys, your Bitcoin
+### **Lightning Security** ⚡🛡
 - **Invoice Validation**: Automatic amount and expiration checks
 - **Network Verification**: Mainnet/testnet environment detection
 - **Balance Monitoring**: Real-time fund tracking
@@ -262,14 +251,6 @@ goose session        # Test Block Goose interaction
 ---
 
 ## 📈 **Live Performance Metrics**
-
-### **Current Trading Status** (Updated Live)
-- **Position**: 🟢 LONG Bitcoin position
-- **Entry Price**: $116,428
-- **Current Price**: $117,027
-- **Profit/Loss**: **+3599 sats (+$4.21)**
-- **Duration**: 74 minutes
-- **Strategy**: Conservative trend-following
 
 ### **Key Performance Indicators**
 - **Win Rate**: Tracking profitable vs. losing trades
@@ -283,15 +264,8 @@ goose session        # Test Block Goose interaction
 
 ### **Individual Users** 👤
 - **🪿 AI Financial Advisor**: "Should I buy Bitcoin now based on technicals?"
-- **⚡ Lightning Payments**: "Send $5 to my friend for coffee"
-- **📈 Automated DCA**: "Buy $20 of Bitcoin every week"
+- **⚡ Lightning Payments**: "Send 500 sats to my friend
 - **🎯 Goal-Based Saving**: "Save for vacation in Bitcoin"
-
-### **Businesses** 🏢
-- **💼 Treasury Management**: AI-optimized Bitcoin allocation
-- **⚡ Payment Processing**: Lightning Network merchant solutions
-- **🤖 Customer Service**: AI agents that can process refunds
-- **📊 Financial Reporting**: Automated P&L and tax calculations
 
 ### **Developers** 👨‍💻
 - **🪿 Framework Extension**: Template for financial AI tools
