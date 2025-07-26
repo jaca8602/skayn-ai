@@ -32,7 +32,6 @@ goose session
 - **Instant Deposits**: QR code generation for immediate funding
 - **Global Reach**: Send/receive Bitcoin anywhere in milliseconds
 - **No Banking**: Completely independent of traditional financial systems
-- **Programmable Money**: Smart contracts and automated payment flows
 
 ---
 
