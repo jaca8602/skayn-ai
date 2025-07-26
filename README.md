@@ -2,15 +2,15 @@
 
 **An AI agent framework with real financial autonomy** 🪿⚡₿
 
-Skayn.ai brings **real money management** to Block's Goose framework through Lightning Network integration, enabling AI agents to autonomously trade Bitcoin, manage finances, and execute global payments. This breakthrough makes AI agents truly autonomous by giving them economic agency.
+Skayn.ai brings satoshis to Block's Goose framework through a Lightning Network integration, enabling AI agents to autonomously stack Bitcoin and execute global payments. This breakthrough makes AI agents truly autonomous by giving them economic agency.
 
 > **Currently Trading Live**
 
 ---
 
-## 🌟 **Revolutionary Capabilities for Goose Framework**
+## 🌟 **Capabilities for Goose Framework**
 
-### **🗣️ Natural Language Financial Control**
+### **🗣️ Stacks Sats with Natural Language l**
 Transform your Goose agents into financial powerhouses:
 ```bash
 goose session
