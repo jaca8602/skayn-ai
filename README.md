@@ -1,4 +1,4 @@
-# 🪿 Skayn.ai - Revolutionary AI-to-Bitcoin Bridge for Goose Framework
+# 🪿 Skayn.ai - AI-to-Bitcoin Bridge for Goose Framework
 
 **An AI agent framework with real financial autonomy** 🪿⚡₿
 
