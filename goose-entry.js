@@ -224,7 +224,7 @@ const commands = {
   menu: async () => {
     return {
       success: true,
-      title: "🦆 Skayn.ai - Autonomous Bitcoin Trading Agent",
+      title: "🪿 Skayn.ai - Autonomous Bitcoin Trading Agent",
       subtitle: "Lightning-powered hypertrading with Goose AI",
       
       sections: {

@@ -44,15 +44,15 @@ const commands = {
             command: "./skayn start enhanced"
           },
           adaptive: {
-            description: "AI-Optimized (Coming Soon)",
+            description: "AI-Optimized (Premium)",
             features: [
-              "🤖 Machine learning position sizing",
-              "📊 Adaptive risk management", 
-              "🧠 Pattern recognition algorithms",
-              "⚡ Real-time strategy optimization",
-              "🔮 Currently in development"
+              "🧠 Claude analysis of CSV market data",
+              "📊 Pattern correlation detection with success rates",
+              "💡 Human-in-the-loop confirmation (y/n)",
+              "🎯 Confidence-based position sizing (6-10 scale)",
+              "✨ Premium UX with detailed reasoning"
             ],
-            command: "./skayn start adaptive (placeholder)"
+            command: "./skayn start adaptive"
           }
         },
         note: "Choose a strategy by running one of the commands above",
@@ -70,17 +70,35 @@ const commands = {
       };
     }
     
-    // Handle adaptive strategy placeholder
+    // Handle adaptive strategy
     if (strategy === 'adaptive') {
+      const agent = await initializeAgent();
+      
+      // Set strategy in agent config
+      agent.config.strategy = 'adaptive';
+      agent.currentStrategyType = 'adaptive';
+      
+      // Start the adaptive strategy with continuous analysis
+      await agent.startAdaptiveStrategy();
+      
       return {
-        success: false,
-        message: "🔮 Adaptive Strategy Coming Soon",
-        description: "AI-optimized machine learning strategy is currently in development",
-        alternatives: [
-          "Use 'conservative' for safe trading",
-          "Use 'enhanced' for advanced indicators"
+        success: true,
+        status: 'started',
+        mode: 'adaptive',
+        strategy: 'adaptive',
+        message: "🧠 Adaptive Strategy Started",
+        description: "Claude will analyze market data and suggest trades for your confirmation",
+        features: [
+          "CSV market data collection every hour",
+          "Claude pattern analysis with confidence scoring",
+          "Premium confirmation UX with detailed reasoning",
+          "Automatic take profit targets based on confidence"
         ],
-        suggestion: "Try: ./skayn start enhanced"
+        nextSteps: [
+          "Wait for Claude analysis (automatic every hour)",
+          "Use './skayn analyze' to trigger immediate analysis",
+          "Review and confirm trades when prompted"
+        ]
       };
     }
     
@@ -130,100 +148,76 @@ const commands = {
 
   analyze: async () => {
     const agent = await initializeAgent();
+    
+    // If using adaptive strategy, trigger Claude analysis
+    if (agent.currentStrategyType === 'adaptive' || agent.config.strategy === 'adaptive') {
+      try {
+        const adaptiveResult = await agent.runAdaptiveAnalysis();
+        return {
+          strategy: 'adaptive',
+          analysisType: 'Claude Pattern Recognition',
+          result: adaptiveResult,
+          timestamp: new Date().toISOString()
+        };
+      } catch (error) {
+        return {
+          strategy: 'adaptive',
+          error: error.message,
+          fallback: 'Using basic analysis'
+        };
+      }
+    }
+    
+    // Standard analysis for other strategies
     const marketMetrics = agent.marketData.getMarketMetrics();
     const signal = agent.strategy.analyze();
     return { marketMetrics, signal };
   },
 
   positions: async () => {
+    // Keep using the full agent for production safety - just clean the output
     const agent = await initializeAgent();
     
     try {
-      // Get ALL trades from LN Markets API (try different type filters)
-      let allTrades = [];
-      try {
-        // Try getting running trades first
-        allTrades = await agent.lnMarketsClient.restClient.futuresGetTrades({ type: 'running' });
-      } catch (e1) {
-        try {
-          // Try getting open trades
-          allTrades = await agent.lnMarketsClient.restClient.futuresGetTrades({ type: 'open' });
-        } catch (e2) {
-          // Try getting closed trades to see if our position closed
-          allTrades = await agent.lnMarketsClient.restClient.futuresGetTrades({ type: 'closed' });
-        }
+      const positions = await agent.lnMarketsClient.restClient.futuresGetTrades({ type: 'running' });
+      const currentPrice = agent.marketData.getLatestPrice();
+      
+      if (positions.length === 0) {
+        console.log(`
+📊 NO ACTIVE POSITIONS
+${'─'.repeat(50)}
+❌ No open positions found  
+💳 Balance: ${agent.lnMarketsClient.balance} sats available
+🪿 Skayn ready to trade when you start a strategy
+${'─'.repeat(50)}
+        `);
+        return { success: true };
       }
-      const currentPrice = agent.marketData.getLatestPrice() || 116000;
       
-      // Find our specific trade
-      const ourTrade = allTrades.find(trade => trade.id === 'c6368001-d42e-427f-90b1-c47492e86a9e');
+      console.log(`
+📊 ACTIVE POSITIONS (${positions.length})
+${'─'.repeat(50)}`);
       
-      if (ourTrade) {
-        // Calculate P&L
-        const isLong = ourTrade.side === 'b';
+      positions.forEach(pos => {
+        const isLong = pos.side === 'b';
         const pnlSats = isLong ? 
-          (currentPrice - ourTrade.entry_price) * (ourTrade.quantity / 100000000) * 100000000 :
-          (ourTrade.entry_price - currentPrice) * (ourTrade.quantity / 100000000) * 100000000;
-        const pnlUSD = pnlSats / 100000000 * currentPrice;
+          (currentPrice - pos.entry_price) * (pos.quantity / 100000000) * 100000000 :
+          (pos.entry_price - currentPrice) * (pos.quantity / 100000000) * 100000000;
         
-        // Get strategy configuration for targets
-        const strategy = agent.config.strategy || agent.currentStrategyType || 'conservative';
-        const strategyConfig = config.strategies?.[strategy];
-        
-        let stopLossPercent = 2;
-        let profitTargetPercent = 3;
-        
-        if (strategyConfig) {
-          stopLossPercent = typeof strategyConfig.stopLossPercentage === 'object' ? 
-            strategyConfig.stopLossPercentage.min : strategyConfig.stopLossPercentage;
-          profitTargetPercent = typeof strategyConfig.profitTargetPercentage === 'object' ? 
-            strategyConfig.profitTargetPercentage.min : strategyConfig.profitTargetPercentage;
-        }
-        
-        // Calculate stop loss and profit target prices
-        const stopLossPrice = isLong ? 
-          ourTrade.entry_price * (1 - stopLossPercent / 100) :
-          ourTrade.entry_price * (1 + stopLossPercent / 100);
-        const profitTargetPrice = isLong ? 
-          ourTrade.entry_price * (1 + profitTargetPercent / 100) :
-          ourTrade.entry_price * (1 - profitTargetPercent / 100);
-        
-        return {
-          success: true,
-          message: `📊 POSITION STATUS`,
-          position: {
-            id: ourTrade.id.slice(-8),
-            side: isLong ? '🟢 LONG' : '🔴 SHORT',
-            status: ourTrade.running ? '✅ OPEN' : '❌ CLOSED',
-            strategy: `🎯 ${strategy.toUpperCase()}`,
-            margin: `${ourTrade.margin} sats`,
-            entry: `$${ourTrade.entry_price.toLocaleString()}`,
-            current: `$${currentPrice.toLocaleString()}`,
-            stopLoss: `🚨 $${stopLossPrice.toLocaleString()} (-${stopLossPercent}%)`,
-            profitTarget: `🎯 $${profitTargetPrice.toLocaleString()} (+${profitTargetPercent}%)`,
-            pnl: `${pnlSats > 0 ? '+' : ''}${Math.round(pnlSats)} sats (${pnlUSD > 0 ? '+' : ''}$${pnlUSD.toFixed(2)})`,
-            age: `${Math.floor((Date.now() - ourTrade.creation_ts) / 60000)}min ago`,
-            aiAutonomy: '🤖 AI will close at profit target automatically'
-          },
-          balance: `${agent.lnMarketsClient.balance} sats available`
-        };
-      } else {
-        return {
-          success: false,
-          message: "❌ Position c6368001... not found in API",
-          balance: `${agent.lnMarketsClient.balance} sats available`,
-          totalTrades: allTrades.length,
-          recentTrades: allTrades.slice(-3).map(t => `${t.id.slice(-8)}: ${t.running ? 'OPEN' : 'CLOSED'}`),
-          note: "🤖 AI autonomy active - positions close automatically at profit targets"
-        };
-      }
+        console.log(`🆔 ${pos.id.slice(-8)} | ${isLong ? '🟢 LONG' : '🔴 SHORT'} ${pos.running ? '✅ OPEN' : '❌ CLOSED'}`);
+        console.log(`💰 Entry: $${pos.entry_price.toLocaleString()} | Margin: ${pos.margin} sats`);
+        console.log(`📊 Current: $${currentPrice.toLocaleString()} | P&L: ${pnlSats > 0 ? '+' : ''}${Math.round(pnlSats)} sats`);
+        console.log(`⏰ ${Math.floor((Date.now() - pos.creation_ts) / 60000)}min ago | 🪿 Skayn monitoring`);
+        console.log('─'.repeat(50));
+      });
+      
+      console.log(`💳 Balance: ${agent.lnMarketsClient.balance} sats available\n`);
+      
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.message, 
-        balance: `${agent.lnMarketsClient.balance} sats` 
-      };
+      console.log(`❌ Error: ${error.message}`);
     }
+    
+    return { success: true };
   },
 
   portfolio: async () => {
@@ -332,7 +326,7 @@ const commands = {
   menu: async () => {
     return {
       success: true,
-      title: "🦆 Skayn.ai - Autonomous Bitcoin Trading Agent",
+      title: "🪿 Skayn.ai - Autonomous Bitcoin Trading Agent",
       subtitle: "Lightning-powered hypertrading with Block's Goose AI framework integration",
       
       sections: {
@@ -354,11 +348,11 @@ const commands = {
         },
         
         "🧠 Trading Strategies": {
-          analyze: "Basic market analysis (moving averages, RSI)",
+          analyze: "Market analysis (adaptive uses Claude, others use indicators)",
           analyzeEnhanced: "Advanced analysis (MACD, RSI divergence, StochRSI)",
           enhancedStrategy: "Switch to enhanced multi-indicator strategy",
-          switchStrategy: "Switch between basic/enhanced strategies",
-          compareStrategies: "Compare performance of both strategies"
+          switchStrategy: "Switch between conservative/enhanced/adaptive strategies",
+          compareStrategies: "Compare performance of all strategies"
         },
         
         "🚨 Emergency Controls": {
@@ -406,7 +400,7 @@ const commands = {
   help: async () => {
     return {
       success: true,
-      title: "🦆 Skayn.ai Help",
+      title: "🪿 Skayn.ai Help",
       description: "Autonomous Bitcoin trading system with Block's Goose AI framework integration",
       
       basicUsage: {
@@ -508,18 +502,47 @@ async function main() {
   const input = process.argv.slice(2).join(' ');
   
   if (!input) {
-    console.log(JSON.stringify({
-      name: 'Skayn.ai Bitcoin Trading Agent',
-      version: '1.0.0',
-      description: 'Autonomous Bitcoin trading agent with Block Goose AI framework integration',
-      framework: 'Block Goose AI',
-      commands: Object.keys(commands),
-      usage: './skayn <command> [args...]'
-    }, null, 2));
+    console.log(`
+🪿 Skayn.ai - Bitcoin Trading Agent
+
+Quick Start:
+  ./skayn help         - Show all commands
+  ./skayn start        - Choose trading strategy 
+  ./skayn status       - Check positions & balance
+  ./skayn stop         - Stop trading
+  ./skayn positions    - View open positions
+
+⚠️  🪿 Skayn automatically closes trades at profit targets
+Need help? Run: ./skayn help
+`);
     return;
   }
 
   const result = await handleCommand(input);
+  
+  // Clean output for specific commands, JSON for others
+  if (input.includes('help') || input.includes('menu')) {
+    // Help and menu have their own clean output
+    return;
+  } else if (input.includes('positions') || input.includes('status')) {
+    // These should have clean output, not JSON
+    return;
+  } else if (input.startsWith('start')) {
+    // Start command should show clean confirmation
+    if (result.success) {
+      console.log(`✅ ${result.result.message}`);
+      console.log(`📊 Strategy: ${result.result.strategy || result.result.mode}`);
+      if (result.result.nextSteps) {
+        console.log('\nNext steps:');
+        result.result.nextSteps.forEach(step => console.log(`  • ${step}`));
+      }
+    } else {
+      console.log(`❌ Error: ${result.error}`);
+    }
+    return;
+  }
+  
+  // Fallback to JSON for other commands
   console.log(JSON.stringify(result, null, 2));
   
   // Keep process alive for start command

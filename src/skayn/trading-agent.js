@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const config = require('../../config/trading.config');
 const PnLTracker = require('../utils/pnl-tracker');
 const EnhancedTradingStrategy = require('../strategies/enhanced-strategy');
+const AdaptiveStrategy = require('../strategies/adaptive-strategy');
 const DepositManager = require('../core/deposit-manager');
 
 class SkaynTradingAgent extends EventEmitter {
@@ -20,10 +21,11 @@ class SkaynTradingAgent extends EventEmitter {
     this.config = config.goose;
     this.pnlTracker = new PnLTracker();
     
-    // Initialize enhanced strategy and deposit manager
+    // Initialize enhanced strategy, adaptive strategy, and deposit manager
     this.enhancedStrategy = new EnhancedTradingStrategy(marketDataManager, riskManager);
+    this.adaptiveStrategy = new AdaptiveStrategy(lnMarketsClient, marketDataManager, config);
     this.depositManager = new DepositManager(lnMarketsClient);
-    this.currentStrategyType = 'basic'; // 'basic' or 'enhanced'
+    this.currentStrategyType = 'basic'; // 'basic', 'enhanced', or 'adaptive'
     
     this.isRunning = false;
     this.decisionInterval = null;
@@ -39,7 +41,8 @@ class SkaynTradingAgent extends EventEmitter {
       },
       strategyMetrics: {
         basic: { signals: 0, accuracy: 0 },
-        enhanced: { signals: 0, accuracy: 0 }
+        enhanced: { signals: 0, accuracy: 0 },
+        adaptive: { signals: 0, accuracy: 0, claudeAnalyses: 0 }
       }
     };
   }
@@ -199,6 +202,21 @@ class SkaynTradingAgent extends EventEmitter {
     logger.gooseAction('AUTONOMOUS_DECISION_START', {
       timestamp: new Date().toISOString()
     });
+
+    // Skip autonomous trading decisions in adaptive mode
+    if (this.currentStrategyType === 'adaptive') {
+      logger.info('🧠 Adaptive mode: Skipping autonomous trading (only Claude analysis + confirmation)');
+      
+      // Still do position monitoring for existing trades
+      try {
+        const currentPositions = await this.lnMarketsClient.getPositions();
+        this.syncPositionTracking(currentPositions);
+      } catch (error) {
+        logger.error('Position sync failed in adaptive mode', error);
+      }
+      
+      return;
+    }
 
     try {
       // Step 0: Check deposits and balance for hypertrading
@@ -1171,6 +1189,269 @@ class SkaynTradingAgent extends EventEmitter {
       default:
         return { success: false, message: 'Unknown command' };
     }
+  }
+
+  /**
+   * Start adaptive strategy with Claude analysis
+   * Pure adaptive mode: CSV analysis → Premium UX → User confirmation → Execution
+   * No autonomous trading decisions
+   */
+  async startAdaptiveStrategy() {
+    logger.info('🧠 Starting Pure Adaptive Strategy Mode');
+    
+    this.currentStrategyType = 'adaptive';
+    this.config.strategy = 'adaptive';
+    this.isRunning = true;
+    
+    // Start modules but NOT the autonomous trading loop
+    await this.initialize();
+    this.startModules();
+    
+    // Only start position monitoring (no trading decisions)
+    this.startAdaptivePositionMonitoring();
+    
+    // Run IMMEDIATE analysis on startup for instant gratification
+    logger.info('🚀 Running immediate Claude analysis for instant trading opportunity...');
+    try {
+      await this.runAdaptiveAnalysis();
+    } catch (error) {
+      logger.error('Initial adaptive analysis failed', error);
+    }
+    
+    // Set up hourly Claude analysis for ongoing opportunities
+    this.adaptiveInterval = setInterval(async () => {
+      try {
+        await this.runAdaptiveAnalysis();
+      } catch (error) {
+        logger.error('Adaptive analysis interval error', error);
+      }
+    }, 3600000); // 1 hour
+    
+    logger.info('✅ Adaptive strategy started - Claude will analyze market data hourly');
+    logger.info('💡 Pure adaptive mode: No autonomous trading, only Claude analysis → User confirmation');
+  }
+
+  /**
+   * Run Claude analysis and get trade recommendation
+   */
+  async runAdaptiveAnalysis() {
+    try {
+      logger.info('🔍 Running Claude adaptive analysis...');
+      
+      // Track analytics
+      this.state.strategyMetrics.adaptive.claudeAnalyses++;
+      
+      // Run the adaptive strategy analysis (shows premium UX)
+      const result = await this.adaptiveStrategy.analyze();
+      
+      if (result.metadata?.userConfirmed) {
+        logger.info('📈 User confirmed adaptive trade - executing...', {
+          action: result.action,
+          amount: result.amount,
+          confidence: result.confidence
+        });
+        
+        // Execute whatever trade the user confirmed (BUY, SELL, or HOLD)
+        await this.executeAdaptiveTrade(result);
+      } else {
+        logger.info('❌ User declined adaptive trade recommendation', {
+          action: result.action,
+          confidence: result.confidence
+        });
+      }
+      
+      return result;
+      
+    } catch (error) {
+      logger.error('Adaptive analysis failed', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute adaptive trade with confidence-based targets
+   */
+  async executeAdaptiveTrade(recommendation) {
+    try {
+      const { action, amount, confidence, metadata } = recommendation;
+      const claudeAnalysis = metadata.claudeAnalysis;
+      
+      // Extract USD amount from new position sizing structure
+      const positionUSD = amount.positionUSD || amount; // Handle both old and new format
+      const leverage = amount.leverage || 1;
+      
+      // Convert USD to sats for LN Markets API
+      const currentPrice = this.marketData.getLatestPrice();
+      const positionSats = Math.floor((positionUSD * 100000000) / currentPrice);
+      
+      logger.info('💰 Executing adaptive position', {
+        action,
+        positionUSD: `$${positionUSD}`,
+        positionSats: `${positionSats} sats`,
+        leverage: `${leverage}x`,
+        confidence,
+        totalExposure: `$${positionUSD * leverage}`,
+        takeProfit: claudeAnalysis.takeProfit,
+        stopLoss: claudeAnalysis.stopLoss
+      });
+      
+      // Handle different action types
+      let position;
+      
+      if (action === 'HOLD') {
+        // For HOLD: Create a small position to demonstrate user choice
+        logger.info('🔒 User chose to execute HOLD signal - creating minimal demonstration position');
+        
+        // Convert sats to BTC quantity for the API call
+        const quantityBTC = positionSats / 100000000;
+        position = await this.lnMarketsClient.openPosition('buy', quantityBTC, 1);
+      } else {
+        // For BUY/SELL: Execute as requested
+        
+        // Convert sats to BTC quantity for the API call
+        const quantityBTC = positionSats / 100000000;
+        const side = action === 'BUY' ? 'buy' : 'sell';
+        position = await this.lnMarketsClient.openPosition(side, quantityBTC, leverage);
+      }
+      
+      // Track position with Claude's targets
+      this.state.activePositions.set(position.id, {
+        ...position,
+        strategy: 'adaptive',
+        confidence: confidence,
+        takeProfitPrice: claudeAnalysis.takeProfit,
+        stopLossPrice: claudeAnalysis.stopLoss,
+        claudeReasoning: claudeAnalysis.reasoning,
+        entryTime: Date.now()
+      });
+      
+      // Set last decision
+      this.state.lastDecision = {
+        action,
+        strategy: 'adaptive',
+        confidence,
+        reasoning: claudeAnalysis.reasoning,
+        targets: {
+          takeProfit: claudeAnalysis.takeProfit,
+          stopLoss: claudeAnalysis.stopLoss
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      // Clean, visible trade confirmation
+      console.log('\n' + '🎯'.repeat(30));
+      console.log('🎯 ADAPTIVE TRADE EXECUTED SUCCESSFULLY');
+      console.log('🎯'.repeat(30));
+      console.log(`📈 Position: ${action} ${position.side === 'b' ? 'LONG' : 'SHORT'} @ $${position.price?.toLocaleString()}`);
+      console.log(`💰 Margin: ${position.margin} sats ($${(position.margin * currentPrice / 100000000).toFixed(2)})`);
+      console.log(`🎯 Take Profit: $${claudeAnalysis.takeProfit.toLocaleString()}`);
+      console.log(`🛑 Stop Loss: $${claudeAnalysis.stopLoss.toLocaleString()}`);
+      console.log(`✨ Confidence: ${confidence}/10`);
+      console.log(`🆔 Position ID: ${position.id.slice(-8)}`);
+      console.log('🎯'.repeat(30) + '\n');
+      
+      logger.info('✅ Adaptive trade executed successfully', {
+        positionId: position.id,
+        strategy: 'adaptive',
+        confidence
+      });
+      
+      return position;
+      
+    } catch (error) {
+      logger.error('Failed to execute adaptive trade', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Override profit target checking for adaptive strategy
+   */
+  checkProfitTarget(position, currentPrice) {
+    if (position.strategy === 'adaptive') {
+      // Use Claude's confidence-based targets
+      const isLong = position.side === 'b';
+      const takeProfitPrice = position.takeProfitPrice;
+      
+      const shouldClose = isLong ? 
+        currentPrice >= takeProfitPrice :
+        currentPrice <= takeProfitPrice;
+      
+      if (shouldClose) {
+        const profitPercent = isLong ?
+          ((currentPrice - position.entry_price) / position.entry_price) * 100 :
+          ((position.entry_price - currentPrice) / position.entry_price) * 100;
+        
+        return {
+          shouldClose: true,
+          reason: `Adaptive profit target reached (${profitPercent.toFixed(2)}% profit)`,
+          strategy: 'adaptive',
+          confidence: position.confidence
+        };
+      }
+    }
+    
+    // Fall back to default profit target logic for other strategies
+    const strategy = this.config.strategy || this.currentStrategyType || 'conservative';
+    const strategyConfig = config.strategies?.[strategy];
+    
+    if (!strategyConfig) return { shouldClose: false };
+    
+    const isLong = position.side === 'b';
+    const profitPercent = isLong ?
+      ((currentPrice - position.entry_price) / position.entry_price) * 100 :
+      ((position.entry_price - currentPrice) / position.entry_price) * 100;
+    
+    let targetPercent = strategyConfig.profitTargetPercentage;
+    if (typeof targetPercent === 'object') {
+      targetPercent = targetPercent.min;
+    }
+    
+    return {
+      shouldClose: profitPercent >= targetPercent,
+      reason: profitPercent >= targetPercent ? 
+        `${strategy} profit target reached (${profitPercent.toFixed(2)}%)` : 
+        'Target not yet reached',
+      strategy,
+      profitPercent: profitPercent.toFixed(2)
+    };
+  }
+
+  /**
+   * Adaptive position monitoring - only monitor existing positions, no new trades
+   */
+  startAdaptivePositionMonitoring() {
+    logger.info('👁️ Starting adaptive position monitoring (no autonomous trading)');
+    
+    this.positionMonitoringInterval = setInterval(async () => {
+      try {
+        // Only monitor existing positions for profit targets and risk management
+        const positions = await this.lnMarketsClient.getPositions();
+        this.syncPositionTracking(positions);
+        
+        // Check each position for profit targets (including Claude's targets)
+        for (const position of positions) {
+          const currentPrice = this.marketData.getLatestPrice();
+          if (currentPrice) {
+            const profitCheck = this.checkProfitTarget(position, currentPrice);
+            
+            if (profitCheck.shouldClose) {
+              logger.info('🎯 Closing position at target', {
+                positionId: position.id.slice(-8),
+                reason: profitCheck.reason,
+                strategy: profitCheck.strategy
+              });
+              
+              // Close the position
+              await this.lnMarketsClient.closePosition(position.id);
+            }
+          }
+        }
+        
+      } catch (error) {
+        logger.error('Position monitoring error', error);
+      }
+    }, 10000); // Check every 10 seconds
   }
 }
 
